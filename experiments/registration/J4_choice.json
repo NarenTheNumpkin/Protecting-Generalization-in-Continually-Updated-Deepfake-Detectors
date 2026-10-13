@@ -1,0 +1,30 @@
+{
+ "target_gain": 1.0272777530521915,
+ "dev_gain": {
+  "realkd_lwf": 1.0272777530521915,
+  "lwf_l1": 1.2861500037670355,
+  "lwf_l2": 0.9358985234115269,
+  "lwf_l4": 0.71274811959392,
+  "lwf_l10": 0.42821316774324475,
+  "j3:seq_lr1e-4": 1.5849003181542216,
+  "seq_lr3e-5": 1.0901777058586082,
+  "seq_lr1e-5": 0.5402427117243739,
+  "realkd_l1": 1.3182454914557422,
+  "realkd_l3": 1.0856560304791245,
+  "realkd_l10": 0.8492257369463944
+ },
+ "chosen": {
+  "lwf": {
+   "setting": "lwf_l2",
+   "reuse_existing": false
+  },
+  "seq": {
+   "setting": "seq_lr3e-5",
+   "reuse_existing": false
+  },
+  "realkd": {
+   "setting": "realkd_l3",
+   "reuse_existing": false
+  }
+ }
+}
