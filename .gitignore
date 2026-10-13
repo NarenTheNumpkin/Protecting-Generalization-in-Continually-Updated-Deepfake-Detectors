@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+# external code and data (see README)
+third_party/
+data/
+logs/
+release/
+# experiment outputs (released separately as an archive)
+experiments/runs/
+experiments/analysis_*/
+experiments/logs_j1/
+experiments/weights/
+*.log
+*.pt
+*.ckpt
+*.npz
+# LaTeX build products
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.out
+paper/*.synctex.gz
+paper/*.pdf
