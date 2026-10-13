@@ -72,6 +72,20 @@ if os.path.exists(f"{J2}/qual.npz"):
     fig.legend(h, l, loc="lower center", ncol=3, frameon=False, markerscale=4, bbox_to_anchor=(0.5, -0.06))
     fig.tight_layout(pad=0.3, rect=(0, 0.06, 1, 1))
     save(fig, "fig_tsne")
+    # compact single-column 2x2 version for the main paper
+    fig, axes = plt.subplots(2, 2, figsize=(3.5, 3.05))
+    for ax, k in zip(axes.flat, ["base", "seq", "lwf", "realkd_lwf"]):
+        e = q[f"tsne_{k}"]
+        for g, c, lab in [(0, NEUTRAL, "genuine"), (1, ORANGE, "stream manipulations"), (2, BLUE, "unseen manipulations")]:
+            ax.scatter(e[grp == g, 0], e[grp == g, 1], s=1.1, color=c, alpha=0.55, linewidths=0, label=lab, rasterized=True)
+        ax.set_title(f"{NAME[k]} (10-NN {knn[k]:.1f}%)", fontsize=6.8, color=INK, pad=2)
+        ax.set_xticks([]); ax.set_yticks([])
+        for sp in ax.spines.values():
+            sp.set_color(GRID)
+    h, l = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, l, loc="lower center", ncol=3, frameon=False, markerscale=4, fontsize=6, bbox_to_anchor=(0.5, -0.01), handletextpad=0.2, columnspacing=0.8)
+    fig.tight_layout(pad=0.2, h_pad=0.6, w_pad=0.4, rect=(0, 0.05, 1, 1))
+    save(fig, "fig_tsne_col")
     stats_out["knn_genuine_vs_unseen"] = knn
     print("kNN", knn)
 

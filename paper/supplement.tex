@@ -87,7 +87,7 @@ Fig.~\ref{fig:unseen} breaks the unseen-panel score down by dataset and generato
 \end{figure}
 
 \section{Representation analyses}
-Fig.~\ref{fig:drift} relates genuine-feature drift to the change in the unseen score over 22 runs, Fig.~\ref{fig:driftmaps} localizes the drift on the grid of patch tokens, Fig.~\ref{fig:tsne} shows t-SNE embeddings of the probe features, and Fig.~\ref{fig:examples} shows unseen faces lost by sequential fine-tuning and those missed by GA+LwF.
+Fig.~\ref{fig:drift} relates genuine-feature drift to the change in the unseen score over 22 runs, Fig.~\ref{fig:driftmaps} localizes the drift on the grid of patch tokens, the t-SNE embeddings of the probe features are in Fig.~\ref{M-fig:tsne} of the main paper, and Fig.~\ref{fig:examples} shows unseen faces lost by sequential fine-tuning and those missed by GA+LwF.
 
 \begin{figure}[t]
 \centering
@@ -102,13 +102,6 @@ Fig.~\ref{fig:drift} relates genuine-feature drift to the change in the unseen s
 \caption{Mean drift of last-layer patch tokens with respect to the model before updates, over the probe set of genuine faces (top) and manipulated faces (bottom). Lighter is more stable.}
 \label{fig:driftmaps}
 \end{figure}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_tsne.pdf}
-\caption{t-SNE of probe-set features before updates and after the S1 stream. Titles give the 5-fold accuracy of a 10-nearest-neighbor classifier separating genuine faces from unseen manipulations in the original feature space.}
-\label{fig:tsne}
-\end{figure*}
 
 \begin{figure*}[t]
 \centering
