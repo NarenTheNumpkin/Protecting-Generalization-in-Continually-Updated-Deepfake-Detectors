@@ -46,5 +46,12 @@ Two versions are built from `paper/`:
 ```bash
 cd paper
 python build_tifs.py                       # IEEE TIFS submission: paper.pdf (13 pages) + supplement.pdf
-latexmk -pdf paper15.tex                   # self-contained 15-page version with 15 references
+latexmk -pdf access_paper.tex              # IEEE Access version: 15 pages, 15 references
 ```
+
+The IEEE Access version needs the official IEEE Access LaTeX template, which is not redistributed here. Download it
+from IEEE and copy its files into `paper/` (`ieeeaccess.cls`, `spotcolor.sty`, the logos, `bullet.png` and the font
+files), keeping the `IEEEtran.cls` already in `paper/`.
+
+The plots are drawn by `paper/make_figures.py` in the style of
+[figures4papers](https://github.com/ChenLiu-1996/figures4papers); it reads the experiment outputs from `experiments/`.

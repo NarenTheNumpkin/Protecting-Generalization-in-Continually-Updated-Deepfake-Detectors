@@ -1,5 +1,4 @@
-\documentclass[journal]{IEEEtran}
-
+\documentclass{ieeeaccess}
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
@@ -9,13 +8,23 @@
 \usepackage{multirow}
 \usepackage{array}
 \usepackage[hyphens]{url}
-\usepackage{balance}
-\usepackage{tikz}
 \usepackage{amsthm}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \newtheorem{proposition}{Proposition}
-\usetikzlibrary{positioning,arrows.meta,fit,calc,shapes.geometric}
+
+\usepackage{bm}
+\makeatletter
+\AtBeginDocument{\DeclareMathVersion{bold}
+\SetSymbolFont{operators}{bold}{T1}{times}{b}{n}
+\SetSymbolFont{NewLetters}{bold}{T1}{times}{b}{it}
+\SetMathAlphabet{\mathrm}{bold}{T1}{times}{b}{n}
+\SetMathAlphabet{\mathit}{bold}{T1}{times}{b}{it}
+\SetMathAlphabet{\mathbf}{bold}{T1}{times}{b}{n}
+\SetMathAlphabet{\mathtt}{bold}{OT1}{pcr}{b}{n}
+\SetSymbolFont{symbols}{bold}{OMS}{cmsy}{b}{n}
+\renewcommand\boldmath{\@nomath\boldmath\mathversion{bold}}}
+\makeatother
 
 \renewcommand{\topfraction}{0.9}
 \renewcommand{\dbltopfraction}{0.9}
@@ -24,42 +33,43 @@
 \renewcommand{\dblfloatpagefraction}{0.85}
 \setcounter{topnumber}{3}
 \setcounter{dbltopnumber}{2}
-\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
-\setlength{\floatsep}{6pt plus 2pt minus 2pt}
-\setlength{\intextsep}{6pt plus 2pt minus 2pt}
-\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
-\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
-\newcommand{\ffpp}{FF\texttt{++}}
+\newcommand{\ffpp}{FF{+}{+}}
 \definecolor{oursblue}{HTML}{2A78D6}
 \definecolor{genc}{HTML}{9A9893}
 \definecolor{fakc}{HTML}{EB6834}
 \definecolor{gradc}{HTML}{1BAF7A}
 
 \begin{document}
+\history{Date of publication xxxx 00, 0000, date of current version xxxx 00, 0000.}
+\doi{10.1109/ACCESS.2024.0429000}
 
 \title{Protecting Generalization in Continually Updated Deepfake Detectors}
+\author{\uppercase{Naren Medarametla}\authorrefmark{1}, \uppercase{Ramineni Durga Sai Sumanth}\authorrefmark{1}, AND \uppercase{Kowsigan M}\authorrefmark{1}}
 
-\author{Naren~Medarametla,
-Ramineni~Durga~Sai~Sumanth,
-and~Kowsigan~M%
-\thanks{Naren Medarametla, Ramineni Durga Sai Sumanth and Kowsigan M are with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai 600127, India (e-mail: naren.medarametla2023@vitstudent.ac.in; durga.sai2023@vitstudent.ac.in; kowsigan.m@vit.ac.in).}}
+\address[1]{School of Computer Science and Engineering, Vellore Institute of Technology, Chennai 600127, India (e-mail: naren.medarametla2023@vitstudent.ac.in; durga.sai2023@vitstudent.ac.in; kowsigan.m@vit.ac.in)}
 
-\markboth{Manuscript submitted for review}{Medarametla \MakeLowercase{\textit{et al.}}: Protecting Generalization in Continually Updated Deepfake Detectors}
+\markboth
+{Medarametla \headeretal: Protecting Generalization in Continually Updated Deepfake Detectors}
+{Medarametla \headeretal: Protecting Generalization in Continually Updated Deepfake Detectors}
 
-\maketitle
+\corresp{Corresponding author: Naren Medarametla (e-mail: naren.medarametla2023@vitstudent.ac.in).}
 
 \begin{abstract}
 Deepfake detectors built on vision foundation models generalize across benchmarks, but new forgeries keep appearing and a deployed detector must be updated with a few examples of them. We study what such updates cost and how to limit the cost without storing past data. Sequential few-shot updates of a state-of-the-art detector that tunes only the layer-normalization parameters of a frozen vision-language encoder barely reduce performance on the learned datasets, but they lower detection of forgeries that are never trained and shift the decision threshold of the original task. We adapt genuine-sample alignment, introduced for continual fake-audio detection, which keeps the previous model's features of genuine faces while manipulated faces adapt, and combine it with logit distillation. On two sealed unseen datasets, this update keeps the area under the receiver operating characteristic curve on unseen forgeries within 0.19 points of the never-updated detector on average over five training seeds, 0.99 points above learning without forgetting and 2.58 points above plain fine-tuning, and it exceeds a re-implementation of a recent generalization-preserving method in every setting. The advantage holds when competitors are tuned to learn as much and grows over nine updates. Controls that align as many random or manipulated faces show that the genuine class is what matters, and a ranking-margin analysis offers a conditional explanation. Retention is incomplete and uneven: text-to-image faces still lose 4.7 points, new datasets are learned less completely than with plain fine-tuning, and thresholds selected on development data do not transfer to unseen data.
 \end{abstract}
 
-\begin{IEEEkeywords}
-Deepfake detection, face forgery detection, continual learning, knowledge distillation, foundation models, generalization.
-\end{IEEEkeywords}
+\begin{keywords}
+Continual learning, deepfake detection, face forgery detection, foundation models, generalization, knowledge distillation.
+\end{keywords}
+
+\titlepgskip=-21pt
+
+\maketitle
 
 \section{Introduction}
 
-\IEEEPARstart{F}{ace} forgery detectors are usually trained once on a fixed collection of manipulations and then evaluated on others. For several years the dominant difficulty was generalization: models trained on FaceForensics++ (\ffpp{})~\cite{rossler2019faceforensics} lost much of their accuracy on Celeb-DF~\cite{li2020celebdf} or on the Deepfake Detection Challenge data~\cite{dolhansky2019dfdcpreview}. Detectors built on vision foundation models have narrowed this gap considerably. GenD~\cite{yermakov2026gend} is a notable example: it adapts only the LayerNorm parameters of a CLIP ViT-L/14 image encoder~\cite{radford2021clip}, roughly 0.03\% of its weights, organizes features on a hypersphere with alignment and uniformity objectives, and reports state-of-the-art average cross-dataset AUROC over fourteen benchmarks.
+\PARstart{F}{ace} forgery detectors are usually trained once on a fixed collection of manipulations and then evaluated on others. For several years the dominant difficulty was generalization: models trained on FaceForensics++ (\ffpp{})~\cite{rossler2019faceforensics} lost much of their accuracy on Celeb-DF~\cite{li2020celebdf} or on the Deepfake Detection Challenge data~\cite{dolhansky2019dfdcpreview}. Detectors built on vision foundation models have narrowed this gap considerably. GenD~\cite{yermakov2026gend} is a notable example: it adapts only the LayerNorm parameters of a CLIP ViT-L/14 image encoder~\cite{radford2021clip}, roughly 0.03\% of its weights, organizes features on a hypersphere with alignment and uniformity objectives, and reports state-of-the-art average cross-dataset AUROC over fourteen benchmarks.
 
 Generalization does not remove the need to update a detector. New generators and face-swapping tools appear continuously, and an operator who collects a handful of examples of a new forgery will want the detector to learn them. The GenD authors acknowledge this limitation explicitly, noting that new forgery methods would require complete retraining. Continual face forgery detection has been studied~\cite{kim2021cored,pan2023dfil,zhang2025gpl}, mostly with ImageNet-pretrained convolutional backbones, and most of this work measures forgetting on the datasets already learned; GPL~\cite{zhang2025gpl} also considers forgeries outside the training stream. In continual fake-audio detection, DFWF~\cite{ma2021dfwf} observed that genuine speech is more consistent across conditions than spoofed speech and aligned the embeddings of genuine samples between the previous and the current model. For a visual detector whose main asset is generalization to manipulations it has never seen, two questions remain open: how much of that generalization does each update destroy, and does preserving the genuine class protect it, and why?
 
@@ -95,7 +105,6 @@ U=\tfrac{1}{2}\Big(\mathrm{AUC}_{\mathrm{WDF}}+\tfrac{1}{3}\sum_{g}\mathrm{AUC}_
 \end{equation}
 where WDF denotes WildDeepfake~\cite{zi2020wilddeepfake} and $g$ ranges over the three generators of DeepFakeFace~\cite{song2023deepfakeface}, each evaluated against the same genuine images. A good update raises AA and the gain while keeping $U$ close to, or above, the value of the never-updated detector.
 
-
 \subsection{Base detector and update objective}
 We use GenD~\cite{yermakov2026gend}. Faces are detected with GenD's RetinaFace-based pipeline, aligned from five landmarks with a margin of 1.3, resized to $224\times224$ and encoded by the CLIP ViT-L/14 vision tower. The pooled feature is L2-normalized to $z\in\mathbb{S}^{1023}$ and classified by a linear head. Only the affine parameters of every LayerNorm and the head are trainable, 104{,}450 parameters in total. GenD is trained with
 \begin{equation}
@@ -117,7 +126,7 @@ With cross-entropy as the base loss this is DFWF's objective; for a fixed teache
 
 \begin{figure*}[t]
 \centering
-\input{figures/fig_overview.tex}
+\includegraphics[width=\textwidth]{figures/fig_overview_access.pdf}
 \caption{Training procedure studied in this paper. (a) The detector is trained once on the base task and then updated on a stream of few-shot tasks; each update uses only the current task's 25 genuine and 25 manipulated videos, which are discarded afterwards, so no exemplars or features are stored. (b) One update (Algorithm~\ref{alg:gad}): a frozen copy of the previous model supplies targets during training only; the GenD loss acts on all faces, the genuine-sample alignment $\mathcal{L}_{\mathrm{GA}}$ (the positive sample alignment of DFWF~\cite{ma2021dfwf}) acts on genuine faces only, and the logit distillation $\mathcal{L}_{\mathrm{LwF}}$ acts on all faces and is optional (Section~\ref{sec:matched}); gradients reach only the LayerNorm affine parameters and the head. (c) Schematic intuition, not data: genuine features stay anchored on the hypersphere while features of the new manipulations move, so forgeries that are never trained keep their margin to the genuine class (Section~\ref{sec:theory}).}
 \label{fig:method}
 \end{figure*}
@@ -214,7 +223,6 @@ Algorithm~\ref{alg:stream} gives the continual protocol in which the update is a
 \end{algorithmic}
 \end{algorithm}
 
-
 \section{Experimental Setup}
 \label{sec:setup}
 
@@ -227,6 +235,7 @@ Table~\ref{tab:data} lists the data. The base task is \ffpp{} c23 with its four 
 \centering
 \footnotesize
 \setlength{\tabcolsep}{2.5pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llccc@{}}
 \toprule
 Dataset & Role & Fitting pool & Development & Test \\
@@ -239,7 +248,8 @@ FaceShifter~\cite{rossler2019faceforensics} & Dev.\ probe & \textendash & 140 / 
 WildDeepfake~\cite{zi2020wilddeepfake} & Sealed unseen & \textendash & \textendash & 396 / 410 \\
 DeepFakeFace~\cite{song2023deepfakeface} & Sealed unseen & \textendash & \textendash & 1000 / 2967 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Neither WildDeepfake nor DeepFakeFace was used by GenD for training or checkpoint selection, and both were registered and sealed before any model was evaluated on them. For WildDeepfake we use the official test split. For DeepFakeFace we use a fixed random sample of 1000 genuine images and 1000 images from each of its Stable Diffusion inpainting, InsightFace face-swap and Stable Diffusion text-to-image subsets, of which 998, 1000 and 969 contained a detectable face.
@@ -583,6 +593,7 @@ GA, $\lambda=3$ (matched) & 1.09 & 1.61 & 87.95{\tiny$\,\pm$0.18} & 73.48 & 95.1
 \centering
 \footnotesize
 \setlength{\tabcolsep}{1.1pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lccccccccc@{}}
 \toprule
 Method & $U$ & T2I & FF & DFDC-P & DFD & CDF & AA & Gain & ACC$_{\mathrm{FF}}$ \\
@@ -595,7 +606,8 @@ GPL$^\dagger$ & 83.59 & 66.67 & 91.82 & 91.97 & 96.11 & 91.25 & 92.79 & 2.25 & 7
 GA & 85.66 & 63.89 & 96.32 & 89.52 & 99.34 & 95.06 & 95.06 & 1.00 & 81.9 \\
 GA+LwF & 87.07 & 70.64 & 97.59 & 89.06 & 99.44 & 94.59 & 95.17 & 0.82 & 87.5 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Fig.~\ref{fig:long} follows $U$ after every update, scored with WildDeepfake subsampled to eight frames per sequence. GA+LwF has the highest $U$ after every one of the nine updates and declines slowly, from 87.85 after the first update to 86.91 after the last. Sequential fine-tuning fluctuates strongly from one update to the next, between 81.49 and 86.70, and GPL declines steadily to 83.58. The fourth DFDC-P session lowers $U$ for every method, which again shows that particular data, rather than the number of updates alone, drives the loss of generalization.
@@ -607,7 +619,6 @@ Fig.~\ref{fig:long} follows $U$ after every update, scored with WildDeepfake sub
 \label{fig:long}
 \end{figure}
 
-
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_lambda.pdf}
@@ -617,35 +628,12 @@ Fig.~\ref{fig:long} follows $U$ after every update, scored with WildDeepfake sub
 
 \textit{Weight sensitivity.}\label{sec:lambda} The weights $\lambda_g=\lambda_l=1$ were fixed in advance. Fig.~\ref{fig:lambda} varies them on stream S1. For every value of $\lambda\in\{0.3,1,3,10\}$, GA attains both a higher $U$ and a higher AA than symmetric KD with the same weight, so the genuine-anchored frontier dominates the symmetric one. A stronger GA weight trades plasticity for retention: at $\lambda=3$ GA reaches $U=88.12$ with AA 94.93, and at $\lambda=10$ it reaches 88.29 with AA 94.50. The pre-set weight is therefore conservative rather than optimal. GA alone at $\lambda=3$ improves on GA+LwF at $\lambda_g=\lambda_l=1$ in $U$, AA and gain, and GA+LwF with $\lambda_g=3$ reaches 88.25. We did not change the reported configuration on the basis of these results, which were obtained on the sealed data. Section~\ref{sec:matched} confirms the observation over five seeds with the weight selected on development data.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_shots.pdf}
-\caption{Unseen-panel score (left) and mean test AUROC on the trained datasets (right) as a function of the number of videos per class and task. Dashed lines mark the never-updated detector.}
-\label{fig:shots}
-\end{figure}
-
-\textit{Data regime.} Fig.~\ref{fig:shots} varies the number of videos per class and task. With five videos, no method learns much (gains between 0.11 and 0.22 points), and all methods stay close to the never-updated detector. The ordering is nevertheless preserved, with GA+LwF at 88.09. With ten videos, sequential fine-tuning learns aggressively (gain 1.67) and loses the most generalization ($U=85.64$). GA+LwF retains 87.76 while also reaching the highest AA (94.23), giving the largest advantage in the study: 2.12 points over sequential fine-tuning and 1.01 over LwF. At 25 videos the three methods reach the same AA, and GA+LwF still retains the most generalization.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_stagewise.pdf}
-\caption{Unseen-panel score of intermediate models along stream S1. Most of the generalization is lost at the final Celeb-DF update.}
-\label{fig:stagewise}
-\end{figure}
+\textit{Data regime.} We vary the number of videos per class and task. With five videos, no method learns much (gains between 0.11 and 0.22 points), and all methods stay close to the never-updated detector. The ordering is nevertheless preserved, with GA+LwF at 88.09. With ten videos, sequential fine-tuning learns aggressively (gain 1.67) and loses the most generalization ($U=85.64$). GA+LwF retains 87.76 while also reaching the highest AA (94.23), giving the largest advantage in the study: 2.12 points over sequential fine-tuning and 1.01 over LwF. At 25 videos the three methods reach the same AA, and GA+LwF still retains the most generalization.
 
 \subsection{Mechanism and robustness analyses}
-\textit{Loss along the stream.} Evaluating the intermediate models on the unseen panel (Fig.~\ref{fig:stagewise}) shows that the loss is not spread evenly over the stream. The first two updates leave the unseen score unchanged or slightly higher for every method except sequential fine-tuning after DFDC-P. Most of the loss occurs at the final Celeb-DF update, where sequential fine-tuning drops from 87.87 to 86.17 and GA+LwF from 88.38 to 87.88. This agrees with the order replication: when CDF is learned before DFD (order S2), all methods lose less. The datasets that most damage generalization are thus specific, and the protection offered by GA matters most at those updates.
+\textit{Loss along the stream.} Evaluating the intermediate models on the unseen panel shows that the loss is not spread evenly over the stream. The first two updates leave the unseen score unchanged or slightly higher for every method except sequential fine-tuning after DFDC-P. Most of the loss occurs at the final Celeb-DF update, where sequential fine-tuning drops from 87.87 to 86.17 and GA+LwF from 88.38 to 87.88. This agrees with the order replication: when CDF is learned before DFD (order S2), all methods lose less. The datasets that most damage generalization are thus specific, and the protection offered by GA matters most at those updates.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{figures/fig_drift.pdf}
-\caption{Genuine-feature drift of the final model with respect to the initial model versus the change in unseen-panel score, for 22 runs on stream S1 (all methods and weight sweeps).}
-\label{fig:drift}
-\end{figure}
-
-\textit{Representation drift.}\label{sec:drift} For a fixed probe set of genuine faces, stream manipulations and unseen manipulations, we measured the mean angular drift $1-\cos(z,z_{\mathrm{base}})$ of every final model with respect to the initial model. Across 22 runs, genuine-feature drift predicts the change in $U$ closely (Fig.~\ref{fig:drift}, Spearman $\rho=-0.95$), but drift of manipulated features predicts it equally well ($\rho$ between $-0.93$ and $-0.96$), and the partial correlation of genuine drift given manipulated-feature drift is only $-0.22$. Drift therefore shows that overall representation stability predicts retention, not a genuine-specific mechanism; the matched controls address the latter. GA does change the composition of the drift as intended: its ratio of genuine to stream-manipulation drift is 0.68, against 0.75 for symmetric, random-subset and fake-only KD (0.69 for GA+LwF against 0.79 for symmetric KD+LwF).
-
-The constraint also transfers beyond the data it is applied to, as Section~\ref{sec:theory} requires: GA, trained on genuine faces of the stream datasets only, reduces the drift of genuine faces from WildDeepfake (0.088 against 0.098 for symmetric and random-subset KD and 0.121 for fake-only KD) and from DeepFakeFace (0.060 against 0.064, 0.065 and 0.076), neither of which any model saw.
+\textit{Representation drift.}\label{sec:drift} Across 22 runs, the angular drift $1-\cos(z,z_{\mathrm{base}})$ of genuine features relative to the initial model predicts the change in $U$ (Spearman $\rho=-0.95$), but manipulated-feature drift predicts it equally well, so drift shows that overall stability predicts retention rather than a genuine-specific mechanism, which the controls address. GA does shift the composition of the drift as intended (genuine to stream-manipulation drift ratio 0.68 against 0.75 for symmetric, random-subset and fake-only KD), and it reduces the drift of genuine faces from WildDeepfake and DeepFakeFace, which no model saw (0.088 against 0.098 and 0.060 against 0.064 relative to symmetric KD), as Section~\ref{sec:theory} requires.
 
 \begin{figure}[t]
 \centering
@@ -661,7 +649,7 @@ The constraint also transfers beyond the data it is applied to, as Section~\ref{
 \label{fig:tsne}
 \end{figure*}
 
-On the grid of last-layer patch tokens (Fig.~\ref{fig:driftmaps}), sequential fine-tuning changes every patch, most strongly at the border and in the background; GA+LwF reduces this drift by a factor of four, almost uniformly. A 10-nearest-neighbor classifier separates genuine faces from unseen manipulations with almost the same accuracy for every model (78.3\% to 79.7\%; Fig.~\ref{fig:tsne}), so the information needed to detect unseen manipulations survives every update in the local structure of the representation. What updates damage is its alignment with the linear decision function, consistent with Proposition~\ref{prop:auc}.
+On the grid of last-layer patch tokens (Fig.~\ref{fig:driftmaps}), GA+LwF reduces the drift of sequential fine-tuning by a factor of four, almost uniformly. A 10-nearest-neighbor classifier separates genuine faces from unseen manipulations equally well for every model (78.3\% to 79.7\%; Fig.~\ref{fig:tsne}), so updates damage the alignment of the representation with the linear readout rather than the information it contains, consistent with Proposition~\ref{prop:auc}.
 
 \textit{Misranked pairs.} Under its assumptions, Proposition~\ref{prop:auc} implies that an update can only misrank pairs whose margin before the update is small. In a post hoc check on the unseen panel, we took every genuine and manipulated pair that the never-updated model ranks correctly and measured how often the final model misranks it, as a function of the margin $s(u)-s(r)$ in logits before the update (Fig.~\ref{fig:margin}). Misranked pairs are confined to small margins for every method, and no pair with a margin above 8 is lost. GA+LwF loses the fewest pairs in every margin bin among the methods that learn: 3.2\% overall, against 6.4\% for LwF and 8.9\% for sequential fine-tuning.
 
@@ -741,27 +729,39 @@ GA+LwF & 81.9 & 6.6 & 58.0 & 22.7 & 3.3 & 57.7 & 31.2 \\
 
 An obvious remedy is to recalibrate after each update with the only data available, those of the current task. A bias or a Platt scaling map fitted on 25 genuine and 25 manipulated Celeb-DF development videos reduces the test ECE of GA+LwF from 0.072 to 0.054 with Platt scaling, but the same map roughly doubles the ECE on the unseen panel for every model (for GA+LwF from 0.081 to 0.167), because the slope learned on the newest task, above 2 for every updated model, sharpens all scores. Recalibration on the newest data alone therefore does not transfer, and calibration after an update needs either a calibration set covering several sources or an update rule that preserves it.
 
-
 \textit{Computational cost.} GA and GA+LwF add one forward pass of the frozen previous model per batch: the three-task stream takes 14.9 minutes against 10.7 for sequential fine-tuning, as for LwF and symmetric KD, and peak memory rises from 5.42 to 5.50~GiB. Nothing is stored between updates and inference is unchanged, whereas replay must store raw face videos of real people.
 
 \section{Discussion}
 \label{sec:discussion}
 
 \subsection{Interpretation}
-The results support a consistent picture. For a parameter-efficient foundation detector, the representation of manipulated faces must change to accommodate a new forgery, but the representation of genuine faces need not. Unseen manipulations are implicitly compared against that genuine representation. Aligning only genuine faces, as DFWF proposed for spoofed speech, preserves it at a smaller cost in plasticity than aligning all faces. The matched controls show that the benefit is tied to the genuine class rather than to a weaker constraint, the weight sweep shows that it holds at every strength, and the comparison at matched plasticity shows that neither a stronger LwF nor a gentler fine-tuning reaches the same retention, while on S1 with the CLIP backbone alignment alone with a development-selected weight does slightly better than the combination. Logit distillation stabilizes the output distribution and was complementary at the pre-set weights. That an objective designed for audio transfers to visual face forgery detection, and outperforms a recent specialized visual method, suggests that the asymmetry between one shared genuine class and many manipulated classes is a property of forgery detection rather than of a modality.
+For a parameter-efficient foundation detector, the representation of manipulated faces must change to accommodate a new forgery, but the representation of genuine faces need not. Unseen manipulations are implicitly compared against that genuine representation. Aligning only genuine faces, as DFWF proposed for spoofed speech, preserves it at a smaller cost in plasticity than aligning all faces. The matched controls show that the benefit is tied to the genuine class rather than to a weaker constraint, the weight sweep shows that it holds at every strength, and the comparison at matched plasticity shows that neither a stronger LwF nor a gentler fine-tuning reaches the same retention, while on S1 with the CLIP backbone alignment alone with a development-selected weight does slightly better than the combination. That an objective designed for audio transfers to visual face forgery detection, and outperforms a recent specialized visual method, suggests that the asymmetry between one shared genuine class and many manipulated classes is a property of forgery detection rather than of a modality.
 
 \subsection{Practical guidance}
-Three observations translate into recommendations. First, retention of generalization should be measured at every update, because forgetting metrics on the trained datasets barely register the damage. Second, genuine-sample alignment is a useful baseline for exemplar-free updates of LayerNorm-tuned foundation detectors in the tested setting, not a guarantee of retention: text-to-image faces still lose performance and decision thresholds do not transfer. Its weight should be chosen on development data according to how much plasticity the application needs; on S1 with the CLIP backbone, alignment alone with a weight chosen this way matched or exceeded the combination with LwF in retention, learning and AA, so the LwF term may be unnecessary, although we did not verify this in the other settings. Third, calibration should be monitored after every update. Fitting a recalibration map on the newest data alone improved calibration on the trained datasets but degraded it on unseen data, so a calibration set should cover more than the latest source.
+Retention of generalization and calibration should be measured at every update, because forgetting metrics barely register the damage. Genuine-sample alignment is a useful baseline for exemplar-free updates of LayerNorm-tuned foundation detectors in the tested setting, not a guarantee: text-to-image faces still lose performance and decision thresholds do not transfer. Its weight should be chosen on development data for the plasticity the application needs; on S1 with the CLIP backbone, alignment alone chosen this way matched or exceeded the combination with LwF.
 
 \subsection{Limitations}
-Several limitations qualify these conclusions. The update objective is prior work~\cite{ma2021dfwf}; this study adds evidence about it in a new modality and regime. Retention is uneven across forgery families: the aggregate score hides a loss on text-to-image faces that no method avoided. Five seeds were run only for the main comparison on S1, all from the same GenD model, so variability of the base training is not covered, and the development-selected GA-only configuration was tested only on S1. GPL was compared through our re-implementation, with unreported settings fixed in advance. The sealed panel was re-used across extension stages, although no decision was based on it, and the method was refined on development data before confirmation. Manipulated \ffpp{} and DFD videos were cropped with masks; with label-independent crops DFD AUROC is 4.5 to 6.6 points lower for every model, although the comparison between methods changes little (Section~\ref{sec:labelindep}). DeepFakeFace consists of single images, WildDeepfake and DFDC-P are re-aligned from distributed crops, the nine-update stream draws on three datasets, and all detectors are GenD variants. The robustness study uses synthetic degradations, and the margin analysis is post hoc. Finally, GA learns the new datasets less completely than sequential fine-tuning, and its calibration on them is worse.
+Several limitations qualify these conclusions. The update objective is prior work~\cite{ma2021dfwf}; this study adds evidence about it in a new modality and regime. Retention is uneven across forgery families, and no method avoided a loss on text-to-image faces. Five seeds were run only for the main S1 comparison, all from the same GenD model, and the development-selected GA-only configuration was tested only on S1. GPL was compared through our re-implementation, with unreported settings fixed in advance. The sealed panel was re-used across extension stages, although no decision was based on it. Manipulated \ffpp{} and DFD videos were cropped with masks; with label-independent crops DFD AUROC is 4.5 to 6.6 points lower for every model, although the comparison between methods changes little. The nine-update stream draws on three datasets, all detectors are GenD variants, and the margin analysis is post hoc. Finally, GA learns the new datasets less completely than sequential fine-tuning, and its calibration on them is worse.
 
 \section{Conclusion}
 
-We studied how a generalizable foundation-model deepfake detector should be updated when new manipulations appear. For GenD, few-shot updates cause little conventional forgetting but erode generalization to unseen manipulations and the calibration of the original task. Genuine-sample alignment, introduced for continual fake-audio detection, transfers to this visual setting: combined with logit distillation, it keeps generalization on sealed unseen datasets close to that of the never-updated model while still improving the new datasets, without storing data, adding parameters or changing inference. Matched controls tie the effect to the genuine class, and a ranking-margin analysis provides a conditional interpretation. At matched plasticity it retains more than a stronger LwF or a gentler fine-tuning, and on the main stream with the CLIP backbone alignment alone with a development-selected weight matched or exceeded the combination. The result holds over five training seeds, task orders, a second encoder, image degradations and a nine-update stream, where its advantage grows, and against a re-implementation of the specialized GPL method. Retention is incomplete for fully synthetic faces, and calibration and decision thresholds after updates remain open: thresholds selected on development data do not transfer to unseen data for any method we tested. Future work should test streams of genuinely new generators, full-data updates and other parameter-efficient detectors, and develop calibration methods that survive exemplar-free updates.
+We studied how a generalizable foundation-model deepfake detector should be updated when new manipulations appear. For GenD, few-shot updates cause little conventional forgetting but erode generalization to unseen manipulations and the calibration of the original task. Genuine-sample alignment, introduced for fake-audio detection, transfers to this setting: with logit distillation it keeps generalization on sealed unseen datasets close to that of the never-updated model while still improving the new datasets, without storing data or changing inference. Matched controls tie the effect to the genuine class; it holds over five seeds, task orders, a second encoder, degradations, matched plasticity and nine updates, and it outperforms a re-implementation of GPL. Retention is incomplete for fully synthetic faces, and calibration and thresholds after updates remain open. Future work should test streams of genuinely new generators, full-data updates and other parameter-efficient detectors.
 
-\balance
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
+\begin{IEEEbiographynophoto}{Naren Medarametla}
+is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Ramineni Durga Sai Sumanth}
+is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Kowsigan M}
+is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
+\end{IEEEbiographynophoto}
+
+\EOD
 
 \end{document}

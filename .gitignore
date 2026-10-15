@@ -24,3 +24,13 @@ paper/*.fls
 paper/*.out
 paper/*.synctex.gz
 paper/*.pdf
+# IEEE Access template files (download the template from IEEE; not redistributed here)
+paper/ieeeaccess.cls
+paper/spotcolor.sty
+paper/logo.png
+paper/notaglinelogo.png
+paper/bullet.png
+paper/*.pfb
+paper/*.tfm
+paper/*.map
+paper/*.fd
