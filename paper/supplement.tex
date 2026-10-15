@@ -1,15 +1,17 @@
 \documentclass[journal]{IEEEtran}
+% SPS manuscript rule: 10-point, double-column, single-spaced, margins of at least 1 inch on all sides
+\usepackage[letterpaper,margin=1in]{geometry}
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{xr}
 \externaldocument[M-]{paper}
 \newcommand{\ffpp}{FF\texttt{++}}
-\renewcommand{\thefigure}{S\arabic{figure}}
-\renewcommand{\thetable}{S\arabic{table}}
 \renewcommand{\thesection}{S\arabic{section}}
 \renewcommand{\topfraction}{0.9}
 \renewcommand{\dbltopfraction}{0.9}
@@ -19,13 +21,18 @@
 \setcounter{topnumber}{3}
 \setcounter{dbltopnumber}{2}
 \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+% figures, tables and equations continue the numbering of the main paper (SPS supplemental-material rule)
+\setcounter{figure}{4}
+\setcounter{table}{8}
+\setcounter{algorithm}{2}
+\setcounter{equation}{6}
 \begin{document}
 \title{Supplementary Material for\\ Protecting Generalization in Continually Updated Deepfake Detectors}
 \author{Naren~Medarametla, Ramineni~Durga~Sai~Sumanth, and~Kowsigan~M}
 \markboth{Supplementary material}{Medarametla \MakeLowercase{\textit{et al.}}: Protecting Generalization in Continually Updated Deepfake Detectors}
 \maketitle
 
-This document collects development results and secondary analyses that are summarized in the main paper. Section, table and figure numbers without the prefix S refer to the main paper. All numbers are produced by the released analysis scripts.
+This document collects development results and secondary analyses that are summarized in the main paper. Figures, tables and equations are numbered consecutively with the main paper; section numbers with the prefix S refer to this document. All numbers are produced by the released analysis scripts.
 
 \section{Development comparison}
 Development used the released GenD checkpoint, the development splits and three seeds (main paper, Section~\ref{M-sec:setup}). Table~\ref{tab:dev} and Fig.~\ref{fig:dev} report the comparison that selected the configuration later confirmed on sealed data.
@@ -36,6 +43,7 @@ Development used the released GenD checkpoint, the development splits and three 
 \centering
 \footnotesize
 \setlength{\tabcolsep}{2.6pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}lcccccc@{}}
 \toprule
 Method & FSh & AA & AF & Gain & ACC$_{\mathrm{FF}}$ \\
@@ -52,7 +60,8 @@ GA & 80.67 [79.30, 81.63] & 98.42 & 0.13 & 1.40 & 87.8 \\
 GA + mem.\ + LwF & 82.84 [81.99, 83.38] & 98.26 & $-$0.01 & 1.05 & 91.1 \\
 GA+LwF & \textbf{82.85} [82.05, 83.52] & 98.26 & 0.01 & 1.05 & \textbf{91.5} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{figure}[t]
@@ -111,7 +120,7 @@ Fig.~\ref{fig:drift} relates genuine-feature drift to the change in the unseen s
 \end{figure*}
 
 \section{Registered hypotheses, per-manipulation results, robustness and sensitivity}
-Table~\ref{tab:hyp} lists the hypotheses of the confirmation and first extension stages with their intervals and Holm-adjusted $p$-values. Table~\ref{M-tab:permanip} of the main paper breaks the trained datasets down by manipulation method. Fig.~\ref{M-fig:seeds} of the main paper shows the unseen score of the five training seeds, Fig.~\ref{fig:lambda} the sensitivity to the alignment and distillation weights, and Fig.~\ref{M-fig:robust} of the main paper the unseen score under image degradations.
+Table~\ref{tab:hyp} lists the hypotheses of the confirmation and first extension stages with their intervals and Holm-adjusted $p$-values. Table~\ref{tab:permanip} breaks the trained datasets down by manipulation method. Fig.~\ref{fig:seeds} shows the unseen score of the five training seeds, Fig.~\ref{fig:lambda} the sensitivity to the alignment and distillation weights, and Fig.~\ref{fig:robust} the unseen score under image degradations.
 
 \begin{table}[t]
 \caption{Pre-registered hypotheses on the unseen-panel score $U$. A hypothesis is confirmed if $\Delta U>0$ and its paired bootstrap 95\% interval excludes zero. $p_{\mathrm{H}}$: Holm-adjusted one-sided $p$-value over all 18 tests (10{,}000 resamples; the smallest attainable value is 0.0018). C1: confirmation stage; M: mechanism controls; R: replication.}
@@ -119,6 +128,7 @@ Table~\ref{tab:hyp} lists the hypotheses of the confirmation and first extension
 \centering
 \footnotesize
 \setlength{\tabcolsep}{2.4pt}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{@{}llccc@{}}
 \toprule
 Hypothesis & Setting & $\Delta U$ & 95\% CI & $p_{\mathrm{H}}$ \\
@@ -144,7 +154,8 @@ R4 GA+LwF $>$ Sym.\ KD+LwF & S2 & +0.34 & [+0.23, +0.47] & 0.002 \\
  & S3 & +0.44 & [+0.31, +0.59] & 0.002 \\
  & PE & +0.58 & [+0.30, +0.87] & 0.002 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \begin{figure}[t]
@@ -183,7 +194,7 @@ GA+LwF & 98.32 & 98.15 & 98.15 & 92.50 & 94.78 & 93.32 \\
 \end{table}
 
 \section{Replication and calibration}
-Fig.~\ref{M-fig:replication} of the main paper shows the unseen score of the main methods in the four replication settings and Table~\ref{tab:calib} the 32-frame evaluation and calibration of the final S1 models (Sections~\ref{M-sec:results} and \ref{M-sec:calib} of the main paper).
+Fig.~\ref{fig:replication} shows the unseen score of the main methods in the four replication settings and Table~\ref{tab:calib} the 32-frame evaluation and calibration of the final S1 models (Sections~\ref{M-sec:results} and \ref{M-sec:calib} of the main paper).
 
 \begin{table}[t]
 \caption{32-frame evaluation and calibration of final models on stream S1. AA$_{32}$: mean test AUROC with 32 frames; ECE: expected calibration error (15 bins) on test splits and on the unseen panel; FPR: mean false-positive rate on genuine test videos at threshold 0.5.}
@@ -208,6 +219,99 @@ GA+LwF & 94.85 & 0.072 & 0.081 & 9.7 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Additional figures and tables for the main results}
+The following figures and tables complement Sections V-B and V-C of the main paper: the per-manipulation results, the replication across task orders and backbones, the five training seeds and the robustness to image degradations.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_seeds.pdf}
+\caption{Unseen-panel score of the final S1 models for five training seeds (dots) and their mean (bar). The dashed line is the never-updated detector.}
+\label{fig:seeds}
+\end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_robust.pdf}
+\caption{Unseen-panel score of the final S1 models under JPEG compression, Gaussian blur, Gaussian noise and down/up-scaling of increasing severity (WildDeepfake with eight frames per sequence). The dashed line is the never-updated detector.}
+\label{fig:robust}
+\end{figure*}
+
+\begin{table}[t]
+\caption{Per-manipulation test AUROC after all updates on stream S1 (32 frames per video). Each column compares the genuine test videos of the dataset with one manipulation method. FSh: FaceShifter probe (\ffpp{} development identities, never trained; 8 frames per video).}
+\label{tab:permanip}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.7pt}
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+& \multicolumn{4}{c}{\ffpp{} (base task)} & \multicolumn{2}{c}{DFDC-P} & \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+Method & DF & F2F & FS & NT & A & B & FSh \\
+\midrule
+No update & 99.41 & 98.54 & 98.91 & 95.98 & 85.66 & 85.70 & 83.70 \\
+Head-only FT & 99.37 & 98.55 & 98.97 & 95.83 & 85.20 & 85.75 & 83.67 \\
+Seq.\ FT & 99.55 & 98.53 & 99.76 & 90.79 & 90.92 & 92.01 & 78.34 \\
+EWC & 99.54 & 98.45 & 99.73 & 90.59 & 90.70 & 93.12 & 77.63 \\
+Replay & 99.51 & 98.42 & 99.77 & 91.08 & 89.65 & 93.83 & 79.76 \\
+LwF & 99.54 & 98.90 & 99.50 & 95.03 & 89.61 & 88.81 & 80.93 \\
+Symmetric KD & 99.49 & 98.94 & 99.55 & 94.64 & 89.14 & 88.13 & 80.31 \\
+Sym.\ KD + LwF & 99.48 & 98.86 & 99.34 & 95.82 & 88.04 & 87.12 & 82.72 \\
+GA & 99.48 & 98.87 & 99.58 & 95.27 & 89.54 & 88.31 & 81.80 \\
+GA+LwF & 99.47 & 98.86 & 99.41 & 95.88 & 88.19 & 87.29 & 83.19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_replication.pdf}
+\caption{Unseen-panel score after all updates for the main methods in four settings: three task orders with the clean retrained CLIP-based GenD and order S1 with the released Perception Encoder variant. The dashed line marks the never-updated detector of each setting.}
+\label{fig:replication}
+\end{figure*}
+
+\section{Weight selection, reproduction of GenD and misranked pairs}
+Algorithm~\ref{alg:select} gives the development-data procedure for choosing the alignment weight (Section V-C of the main paper), Table~\ref{tab:repro} compares reported and reproduced GenD scores, and Fig.~\ref{fig:margin} shows the fraction of genuine and manipulated pairs that are misranked by the updates as a function of their margin before the updates.
+
+\begin{algorithm}[t]
+\caption{Development-selected alignment weight}
+\label{alg:select}
+\footnotesize
+\begin{algorithmic}[1]
+\Require candidate weights $\Lambda$, target plasticity $G^{*}$ (mean gain), development splits
+\For{each $\lambda\in\Lambda$}
+  \State run Algorithm~\ref{M-alg:stream} on the development splits with $\lambda_g=\lambda$
+  \State $G(\lambda)\gets$ mean gain of the run
+\EndFor
+\State $\lambda^{*}\gets\arg\min_{\lambda\in\Lambda}|G(\lambda)-G^{*}|$ \Comment{ties: larger $\lambda$}
+\State \Return $\lambda^{*}$ \Comment{sealed test data and panel never used}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{table}[t]
+\caption{Video AUROC (\%) of GenD. Released weights are evaluated with our pipeline; the retrained model selects its checkpoint on \ffpp{} validation only. Dashes denote values that were not reported or not evaluated.}
+\label{tab:repro}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Test set & Paper~\cite{yermakov2026gend} & Released weights & Clean retrain \\
+\midrule
+\ffpp{} test & \textendash & \textendash & 98.21 \\
+Celeb-DF v2 & 94.6 & 95.11 [92.95, 96.81] & 92.04 \\
+DFD & 96.4 & 97.59 [96.80, 98.30] & \textendash \\
+DFDC-P & \textendash & 90.00 & 85.66 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_margin.pdf}
+\caption{Fraction of correctly ranked genuine and manipulated pairs of the unseen panel that are misranked after the S1 updates, by logit margin before the updates (post hoc). Legend: overall fraction.}
+\label{fig:margin}
+\end{figure}
 
 \section{Recalibration with current-task data}
 Table~\ref{tab:recal} reports the recalibration study discussed in Section~\ref{M-sec:calib} of the main paper.

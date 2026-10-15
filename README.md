@@ -41,6 +41,10 @@ Methods: `realkd` = genuine-sample alignment (GA), `realkd_lwf` = GA + LwF, `seq
 
 ## Paper
 
+Two versions are built from `paper/`:
+
 ```bash
-cd paper && latexmk -pdf paper.tex && latexmk -pdf supplement.tex && latexmk -pdf paper.tex
+cd paper
+python build_tifs.py                       # IEEE TIFS submission: paper.pdf (13 pages) + supplement.pdf
+latexmk -pdf paper15.tex                   # self-contained 15-page version with 15 references
 ```
