@@ -62,7 +62,7 @@ def finalize_figure(fig, name, pad=1.0, tight=True, bbox=False):
         fig.tight_layout(pad=pad)
     kw = {"bbox_inches": "tight", "pad_inches": 0.08} if bbox else {}
     fig.savefig(f"{OUT}/{name}.pdf", dpi=300, **kw)
-    fig.savefig(f"{OUT}/{name}.png", dpi=150, **kw)
+    fig.savefig(f"{OUT}/{name}.png", dpi=300, **kw)
     plt.close(fig)
     print("wrote", name)
 

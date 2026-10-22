@@ -1,0 +1,164 @@
+@chapter PROPOSED METHODOLOGY {ch:method}
+
+This chapter describes what the project builds and how the parts fit together. Section {sec:overview} gives an overview of the system. Section {sec:formulation} defines the continual setting and the quantities used to evaluate it. Sections {sec:gend} to {sec:objective} describe the base detector and the update that the project studies, Sections {sec:protocol} and {sec:selection} the protocol in which updates are applied and the procedure used to choose the regularization weight, and Section {sec:theory} a ranking-margin analysis that explains why the update protects unseen forgeries. Section {sec:baselines} describes the baseline and control methods.
+
+@section SYSTEM OVERVIEW {sec:overview}
+
+{fig:workflow} shows the complete pipeline. Six public datasets are used. Four of them, FaceForensics++, DFDC-Preview, the DeepFakeDetection set and Celeb-DF, form the training stream; the other two, WildDeepfake and DeepFakeFace, form a sealed unseen panel that is never used for training or for any decision and is only scored at the end. Faces are detected, aligned and cropped from every video with the preprocessing pipeline of GenD, and every dataset is divided into identity-disjoint splits: a fitting pool from which the few-shot training samples are drawn, a development split used to compare methods and choose settings, and a sealed test split.
+
+@fig figs/diag_workflow.png | 5.6 | fig:workflow | Overall workflow of the project
+
+The base detector is GenD trained on FaceForensics++. It is then updated on the stream, one dataset at a time, each time from a few-shot sample of 25 genuine and 25 manipulated videos, with the update studied in this project or with one of the baseline methods. After every update the model is evaluated on the test splits of all datasets learned so far, and after the last update also on the unseen panel. The never-updated model is evaluated in the same way and serves as the reference that every updated model is compared with. Finally, differences between methods are tested statistically with paired bootstrap intervals, corrections for multiple testing and repeated training with five seeds.
+
+@section PROBLEM FORMULATION {sec:formulation}
+
+A detector $f_\theta$ with parameters $\theta$ maps a face crop to the probability that it is manipulated. The score of a video is the mean of the probabilities of its frames. The detector is first trained on a base task $\mathcal{T}_1$ and then updated on a stream of tasks $\mathcal{T}_2,\dots,\mathcal{T}_K$. Each update sees only a few-shot sample of its own task, 25 genuine and 25 manipulated videos unless stated otherwise, and keeps nothing from earlier tasks.
+
+Let $A_{k,j}$ denote the area under the receiver operating characteristic curve (AUROC), computed on videos, of the model obtained after learning task $k$ on the test split of task $j$. Three standard continual learning quantities follow from these values. The average AUROC over all trained tasks after the final update is
+
+@eq eq:aa | \mathrm{AA}=\frac{1}{K}\sum_{j=1}^{K}A_{K,j},
+
+the average forgetting is
+
+@eq eq:af | \mathrm{AF}=\frac{1}{K-1}\sum_{j=1}^{K-1}\Big(\max_{j\le k<K}A_{k,j}-A_{K,j}\Big),
+
+in which negative values indicate that later tasks improved earlier ones (backward transfer), and the mean gain obtained when a task is learned is
+
+@eq eq:gain | \mathrm{Gain}=\frac{1}{K-1}\sum_{j=2}^{K}\big(A_{j,j}-A_{j-1,j}\big).
+
+The gain measures plasticity, that is, how much the update actually learns. Because the AUROC does not depend on the decision threshold, it hides shifts of the operating point that matter in deployment. The project therefore also reports the accuracy at the fixed threshold 0.5, written ACC@0.5 or, for the base task, $\mathrm{ACC}_{\mathrm{FF}}$, the false-positive rate on genuine videos at that threshold, and the expected calibration error (ECE) \cite{guo2017calibration}, which measures how far the predicted probabilities are from the observed frequencies of manipulation.
+
+The central quantity of the project is generalization to manipulations that are absent from the whole stream. During development it is monitored with a probe of the FaceShifter manipulation distributed with FaceForensics++, which is never trained. For confirmation, generalization is measured with the unseen-panel score
+
+@eq eq:U | U=\frac{1}{2}\left(\mathrm{AUC}_{\mathrm{WDF}}+\frac{1}{3}\sum_{g}\mathrm{AUC}_{\mathrm{DFF},g}\right),
+
+where WDF denotes WildDeepfake \cite{zi2020wilddeepfake} and $g$ ranges over the three generators of DeepFakeFace \cite{song2023deepfakeface}, each evaluated against the same genuine images. The two datasets receive equal weight, so that the large DeepFakeFace set does not dominate the score. A good update raises AA and the gain while it keeps $U$ close to, or above, the value of the never-updated detector.
+
+@section BASE DETECTOR: GenD {sec:gend}
+
+{fig:gend} shows the structure of GenD \cite{yermakov2026gend}. A face is detected with a RetinaFace detector \cite{deng2020retinaface}, aligned from five facial landmarks with a margin of 1.3 around the face, and resized to $224\times224$ pixels. The crop is encoded by the vision tower of CLIP ViT-L/14 \cite{radford2021clip}: the image is divided into $16\times16$-pixel patches, each patch is embedded as a token, a classification token is added, and the sequence passes through 24 transformer blocks. Each block contains two layer-normalization layers, a multi-head self-attention layer and a multilayer perceptron.
+
+@fig figs/diag_gend.png | 5.6 | fig:gend | Structure of the GenD detector and its trainable parameters
+
+The pooled feature $f\in\mathbb{R}^{1024}$ of the classification token is normalized to unit length, $z=f/\|f\|$, so that every face is represented by a point on the hypersphere $\mathbb{S}^{1023}$, and a linear head maps $z$ to two logits, one for each class. The weights of the encoder, about 300 million values, stay frozen. Only the affine parameters of every layer-normalization layer \cite{ba2016layernorm}, a scale $\gamma$ and a shift $\beta$ per channel, and the head are trained: 104,450 parameters in total. Layer normalization rescales and shifts the activations of each token, so these parameters control how the frozen features are mixed and weighted without changing what the encoder computes.
+
+GenD is trained with the loss
+
+@eq eq:gendloss | \mathcal{L}_{\mathrm{GenD}}=\mathcal{L}_{\mathrm{CE}}+0.5\,\mathcal{L}_{\mathrm{unif}}+0.1\,\mathcal{L}_{\mathrm{align}},
+
+where $\mathcal{L}_{\mathrm{CE}}$ is the cross-entropy of the head, $\mathcal{L}_{\mathrm{align}}$ is the mean squared distance between features with the same label in a batch, and $\mathcal{L}_{\mathrm{unif}}=\log\mathbb{E}\,e^{-2\|z_i-z_j\|^2}$ is the uniformity loss of Wang and Isola \cite{wang2020alignuniform}, which spreads features over the hypersphere. Every method in this project, including all baselines, uses $\mathcal{L}_{\mathrm{GenD}}$ as its task loss and trains the same 104,450 parameters, unless stated otherwise.
+
+@section GENUINE-SAMPLE ALIGNMENT {sec:ga}
+
+When task $\mathcal{T}_t$ arrives, a frozen copy of the current model, with parameters $\theta_{t-1}$, is kept as a teacher, and the parameters $\theta_t$ are optimized on the few-shot sample of $\mathcal{T}_t$. Let $\mathcal{R}$ be the set of genuine samples in a batch, $z_i$ the feature of sample $i$ under the model being trained and $\bar z_i$ its feature under the frozen copy. Genuine-sample alignment (GA) penalizes the angular drift of genuine features only:
+
+@eq eq:ga | \mathcal{L}_{\mathrm{GA}}=\frac{1}{|\mathcal{R}|}\sum_{i\in\mathcal{R}}\big(1-z_i^{\top}\bar z_i\big).
+
+Because both features have unit length, $z_i^{\top}\bar z_i$ is the cosine of the angle between them, and the loss is zero when the genuine features have not moved. This is the positive sample alignment of DFWF \cite{ma2021dfwf}, written for the unit-length features of GenD. Batches that contain no genuine sample receive no alignment term.
+
+DFWF motivated this loss by the consistency of genuine speech across recording conditions. For a generalizable face forgery detector the same asymmetry has a direct interpretation. A detector that generalizes recognizes an unseen manipulation as a departure from the distribution of genuine faces. An update that moves the genuine features relocates this reference, and can therefore degrade the detection of every manipulation that is not in the current batch. The manipulated features, in contrast, must move for a new manipulation to be learned. All tasks share the genuine class, so the constraint stays consistent across the stream, while each task contributes its own manipulated faces. Section {sec:theory} turns this argument into a precise statement.
+
+@section LOGIT DISTILLATION {sec:lwf}
+
+GA constrains the geometry of the representation on the genuine class. Logit distillation, the core of learning without forgetting (LwF) \cite{li2018lwf}, constrains the output distribution on all samples. With logits $\ell$ of the model being trained, logits $\bar\ell$ of the frozen copy, the softmax function $\sigma$ and a temperature $T=2$, the LwF term is
+
+@eq eq:lwf | \mathcal{L}_{\mathrm{LwF}}=T^2\,\mathrm{KL}\big(\sigma(\bar\ell/T)\,\big\|\,\sigma(\ell/T)\big),
+
+averaged over the batch. The temperature softens both distributions so that the relative confidence of the teacher, and not only its decision, is transferred; the factor $T^2$ keeps the size of the gradient independent of the temperature \cite{hinton2015distilling}.
+
+@section COMPLETE UPDATE OBJECTIVE {sec:objective}
+
+The complete objective of an update is
+
+@eq eq:total | \mathcal{L}=\mathcal{L}_{\mathrm{GenD}}+\lambda_{g}\,\mathcal{L}_{\mathrm{GA}}+\lambda_{l}\,\mathcal{L}_{\mathrm{LwF}},\qquad \lambda_g=\lambda_l=1.
+
+The project refers to this update as GA+LwF and to the update without the LwF term as GA. With cross-entropy as the task loss, this is the objective of DFWF; for a fixed teacher, the KL form of LwF differs from DFWF's teacher cross-entropy only by a constant. DFWF tuned its weights for each task, whereas this project fixed $\lambda_g=\lambda_l=1$ before any experiment. Section {sec:sensitivity} reports how sensitive the results are to these weights, and Section {sec:matched} compares methods at matched plasticity.
+
+{fig:overview} summarizes one update step and Algorithm {alg:gad} gives it in full. The frozen copy is used only during training. After the update it is discarded, so nothing is stored between updates, and inference remains a single forward pass of the unchanged detector. The only training overhead is one additional forward pass of the frozen copy per batch.
+
+@fig figs/diag_overview.png | 5.77 | fig:overview | Training procedure studied in this project
+
+Panel (a) of {fig:overview} shows the stream: the detector is trained once on the base task and then updated on few-shot tasks, and each update uses only the current task's 25 genuine and 25 manipulated videos, which are discarded afterwards. Panel (b) shows one update: the GenD loss acts on all faces, the alignment term only on genuine faces, and the optional logit distillation on all faces; gradients reach only the layer-normalization parameters and the head. Panel (c) is a schematic illustration rather than data: genuine features stay anchored on the hypersphere while the features of new manipulations move, so forgeries that were never trained keep their margin to the genuine class.
+
+@alg alg:gad | One GA+LwF update on task $\mathcal{T}_t$
+@require current parameters $\theta_{t-1}$ (layer-normalization affine parameters and head), few-shot set $\mathcal{D}_t$, weights $\lambda_g,\lambda_l$, temperature $T$, number of epochs $E$
+0|$\bar\theta\gets\theta_{t-1}$ (frozen); $\theta_t\gets\theta_{t-1}$
+0|**for** $e=1,\dots,E$ **do**
+1|**for** each minibatch $\{(x_i,y_i)\}_{i\in\mathcal{B}}\subset\mathcal{D}_t$ **do**
+2|$\tilde x_i\gets$ GenD augmentation of $x_i$
+2|$(\ell_i,z_i)\gets f_{\theta_t}(\tilde x_i)$; $(\bar\ell_i,\bar z_i)\gets f_{\bar\theta}(\tilde x_i)$   // same augmented view
+2|$\mathcal{R}\gets\{i\in\mathcal{B}:y_i=\text{genuine}\}$
+2|$\mathcal{L}\gets\mathcal{L}_{\mathrm{GenD}}+\lambda_l\,T^2\,\frac{1}{|\mathcal{B}|}\sum_{i\in\mathcal{B}}\mathrm{KL}\big(\sigma(\bar\ell_i/T)\,\|\,\sigma(\ell_i/T)\big)$
+2|**if** $\mathcal{R}\neq\emptyset$ **then** $\mathcal{L}\gets\mathcal{L}+\lambda_g\frac{1}{|\mathcal{R}|}\sum_{i\in\mathcal{R}}\big(1-z_i^{\top}\bar z_i\big)$
+2|update $\theta_t$ with Adam on $\nabla_{\theta_t}\mathcal{L}$
+1|**end for**
+0|**end for**
+0|discard $\bar\theta$; **return** $\theta_t$   // nothing is stored
+@endalg
+
+@section CONTINUAL PROTOCOL {sec:protocol}
+
+Algorithm {alg:stream} gives the protocol in which updates are applied and evaluated. For every task of the stream, a few-shot sample is drawn from the fitting pool of that task, the model is updated with Algorithm {alg:gad} or with a baseline method, the sample and the previous model are discarded, and the new model is evaluated on the test splits of all tasks learned so far. After the last update the model is also scored on the sealed unseen panel. The same protocol, with the same few-shot samples for a given seed, is used for every method, so that differences between methods come only from the update rule.
+
+@alg alg:stream | Continual updating and evaluation
+@require detector $\theta_1$ trained on the base task $\mathcal{T}_1$, stream $\mathcal{T}_2,\dots,\mathcal{T}_K$, number of shots $n$, weights $\lambda_g,\lambda_l$
+0|**for** $t=2,\dots,K$ **do**
+1|$\mathcal{D}_t\gets n$ genuine and $n$ manipulated videos from the fitting pool of $\mathcal{T}_t$
+1|$\theta_t\gets$ Update$(\theta_{t-1},\mathcal{D}_t,\lambda_g,\lambda_l)$   // Algorithm {alg:gad}
+1|discard $\mathcal{D}_t$ and $\theta_{t-1}$   // no exemplars or features kept
+1|**for** $j=1,\dots,t$ **do** $A_{t,j}\gets$ video AUROC of $\theta_t$ on the test split of $\mathcal{T}_j$
+0|**end for**
+0|$U\gets\frac12\big(\mathrm{AUC}_{\mathrm{WDF}}(\theta_K)+\frac13\sum_g\mathrm{AUC}_{\mathrm{DFF},g}(\theta_K)\big)$   // sealed panel
+0|compute AA, AF and gain from $\{A_{t,j}\}$
+0|**return** $\theta_K$, AA, AF, gain, $U$
+@endalg
+
+@section SELECTING THE ALIGNMENT WEIGHT {sec:selection}
+
+The weights $\lambda_g=\lambda_l=1$ were fixed in advance, but equal weights do not impose equally strong constraints on different losses. A fair comparison between methods therefore requires settings that learn about as much as each other. Algorithm {alg:select} chooses a setting for a desired amount of plasticity using development data only. For each candidate weight the whole stream is run on the development splits, the mean gain is recorded, and the weight whose gain is closest to the target is selected; ties go to the larger weight, which constrains the model more. The sealed test splits and the unseen panel are never used. The same rule was applied to the competing methods in the matched-plasticity experiment of Section {sec:matched}, with the learning rate of plain fine-tuning and the weight of LwF in place of $\lambda$.
+
+@alg alg:select | Development-selected alignment weight
+@require candidate weights $\Lambda$, target plasticity $G^{*}$ (mean gain), development splits
+0|**for** each $\lambda\in\Lambda$ **do**
+1|run Algorithm {alg:stream} on the development splits with $\lambda_g=\lambda$
+1|$G(\lambda)\gets$ mean gain of the run
+0|**end for**
+0|$\lambda^{*}\gets\arg\min_{\lambda\in\Lambda}|G(\lambda)-G^{*}|$   // ties: larger $\lambda$
+0|**return** $\lambda^{*}$   // sealed test data and panel never used
+@endalg
+
+@section RANKING-MARGIN ANALYSIS {sec:theory}
+
+DFWF justified genuine alignment by the consistency of genuine samples. The following elementary argument relates it directly to the detection of forgeries that are never trained. Write the decision score of the detector as the difference of its two logits, $s_\theta(x)=w^{\top}z_\theta(x)+c$, where $\|z_\theta(x)\|=1$, and let $\theta'$ denote the model after an update, with head $(w',c')$.
+
+**Proposition 1 (score shift).** For every input $x$, with angular drift $\delta(x)=1-z_{\theta'}(x)^{\top}z_\theta(x)$,
+
+@eq eq:shift | \big|s_{\theta'}(x)-s_\theta(x)\big|\le\|w'-w\|+|c'-c|+\|w\|\sqrt{2\,\delta(x)}.
+
+*Proof.* The score difference can be written as $s_{\theta'}(x)-s_\theta(x)=(w'-w)^{\top}z_{\theta'}(x)+w^{\top}\big(z_{\theta'}(x)-z_\theta(x)\big)+(c'-c)$. The first term is bounded by $\|w'-w\|$ because $\|z_{\theta'}(x)\|=1$, and the second by $\|w\|\,\|z_{\theta'}(x)-z_\theta(x)\|$, where $\|z_{\theta'}(x)-z_\theta(x)\|^2=2-2z_{\theta'}(x)^{\top}z_\theta(x)=2\delta(x)$. The triangle inequality gives the result.
+
+**Proposition 2 (margin bound on unseen-manipulation AUROC).** Let $G$ be the distribution of genuine faces and $Q$ that of an unseen manipulation, and let $\mathrm{AUC}=P_{r\sim G,\,u\sim Q}\big(s_\theta(u)>s_\theta(r)\big)$ be the probability that a manipulated face scores higher than a genuine one, with $\mathrm{AUC}'$ the same quantity after the update. If $|s_{\theta'}(r)-s_\theta(r)|\le\epsilon_G$ for all genuine faces $r$ and $s_{\theta'}(u)\ge s_\theta(u)-\epsilon_Q$ for all manipulated faces $u$ from $Q$, then
+
+@eq eq:auc | \mathrm{AUC}-\mathrm{AUC}'\le P\big(0<s_\theta(u)-s_\theta(r)\le\epsilon_G+\epsilon_Q\big).
+
+*Proof.* Take a pair that is ranked correctly before the update with a margin larger than $\epsilon_G+\epsilon_Q$. Then $s_{\theta'}(u)-s_{\theta'}(r)\ge s_\theta(u)-\epsilon_Q-s_\theta(r)-\epsilon_G>0$, so the pair stays correctly ranked. Only pairs whose margin before the update is positive but at most $\epsilon_G+\epsilon_Q$ can become misranked, and the loss of AUROC is at most their probability.
+
+Proposition 2 states that an update can damage the detection of an unseen manipulation only through pairs with a small margin, and only by an amount governed by the score shift of genuine faces, $\epsilon_G$, and of the unseen manipulated faces, $\epsilon_Q$. During an update, $\epsilon_Q$ cannot be controlled directly, because no sample of $Q$ is available, and constraining the current manipulated faces does not target $Q$ while it works against learning them. The genuine class is different: it occurs in every task, and the genuine faces of the current task are samples of the same class on which every future and unseen comparison relies. By Proposition 1, the representation part of $\epsilon_G$ is controlled by the angular drift of the genuine features, which is exactly the quantity that $\mathcal{L}_{\mathrm{GA}}$ penalizes.
+
+The argument has clear limits. The head terms of Proposition 1 are not controlled by GA. LwF encourages consistent outputs on the samples of the current update, but it does not guarantee a uniform bound on changes of the classifier or on the scores of unseen data. The constraint acts on the genuine faces of the current task, and it protects the genuine faces of other datasets only to the extent that it transfers to them. The argument is therefore a conditional motivation and not a guarantee. Chapter 5 tests its two observable consequences: that GA reduces the drift of genuine faces from datasets that no model ever saw (Section {sec:drift}), and that the pairs lost by an update are concentrated at small margins (Section {sec:margins}).
+
+@section BASELINE AND CONTROL METHODS {sec:baselines}
+
+All methods start from the same detector, see the same few-shot samples and train the same parameters with $\mathcal{L}_{\mathrm{GenD}}$ unless stated otherwise. They differ only in the term added to the task loss or in which parameters they update.
+
+*Sequential fine-tuning* (Seq. FT) adds no regularizer and is the reference for unconstrained learning. *Head-only fine-tuning* freezes the layer-normalization parameters and trains only the 2,050 parameters of the head. *EWC* \cite{kirkpatrick2017ewc} adds the penalty $\lambda\sum_k F_k(\theta_k-\theta_k^{*})^2$, where $\theta^{*}$ are the parameters before the update and $F_k$ is the diagonal of the Fisher information, estimated on the base task and accumulated over the tasks learned so far. *Layer-normalization merging* (LN merging) trains like sequential fine-tuning and then replaces the trainable parameters with their running average over all tasks learned so far, including the base task. *LwF* \cite{li2018lwf} adds only the logit distillation term of Equation {eq:lwf}.
+
+Three methods apply feature distillation $1-z_i^{\top}\bar z_i$ to a different set of samples, and serve to test whether the genuine class matters. *Symmetric KD* applies it to all samples; combined with LwF it corresponds to the representation and output distillation used by CoReD-style methods \cite{kim2021cored}. *Fake-only KD* applies it only to manipulated faces, the mirror image of GA. *Random-subset KD* applies it to a random subset of each batch that contains exactly as many samples as the batch has genuine faces, chosen regardless of label. If GA were better only because it constrains fewer samples than symmetric KD, random-subset KD would match it.
+
+Two references violate the constraints of the setting and are reported only for comparison. *Exemplar replay* keeps five genuine and five manipulated raw videos of every earlier task and mixes them into training. *Joint training* learns once from the union of all few-shot sets, including a few-shot sample of FaceForensics++. During development the project also evaluated prototype replay with semantic drift compensation \cite{yu2020sdc}, which stores class prototypes in feature space and corrects them for drift, and a combination of GA with this prototype memory.
+
+*GPL* \cite{zhang2025gpl} has no public code, so it was re-implemented from the paper and its supplement on the same detector and protocol. As in GPL, the detector itself, here the layer-normalization parameters and head of GenD, is frozen during updates, and only a lightweight watermark generator is trained: three convolutional layers produce a sample-specific mask that modulates a learned watermark added to the input image, 156,659 parameters in total. The loss combines cross-entropy with GPL's hyperbolic contrastive alignment of the features, mapped into the Poincaré ball, to 25 genuine and 25 manipulated cluster centers of the base task, with weight $\lambda_{\mathrm{nce}}=0.1$, GPL's best value. Let $g_{\mathrm{task}}$ be the gradient of this loss and $g_{\mathrm{base}}$ the gradient of the divergence between the outputs of the current and the previous model. Whenever the two conflict, the task gradient is projected,
+
+@eq eq:gpl | g\gets g_{\mathrm{task}}-\frac{g_{\mathrm{task}}^{\top}g_{\mathrm{base}}}{\|g_{\mathrm{base}}\|^2}\,g_{\mathrm{base}}\quad\text{if } g_{\mathrm{task}}^{\top}g_{\mathrm{base}}<0,
+
+which removes the component that would increase the divergence. Settings that GPL does not report, namely a zero-initialized watermark, a contrastive temperature of 0.1, full removal of the conflicting component and the exponential map of unit-length features into the Poincaré ball, were fixed before any run. Because the watermark generator is a newly initialized module, its learning rate was selected on development data with a registered rule: $10^{-4}$ barely learned (mean gain 0.01) and $10^{-3}$ was chosen. GPL stores the base-task cluster centers, a small set of feature statistics, but no images.

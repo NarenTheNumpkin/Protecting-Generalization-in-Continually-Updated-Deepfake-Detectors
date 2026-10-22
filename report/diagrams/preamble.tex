@@ -1,0 +1,27 @@
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,calc,shapes.geometric,backgrounds}
+\definecolor{bmain}{HTML}{0F4D92}
+\definecolor{bsec}{HTML}{3775BA}
+\definecolor{blight}{HTML}{DCE8F5}
+\definecolor{gfill}{HTML}{DDF3DE}
+\definecolor{gline}{HTML}{5BAF5B}
+\definecolor{rfill}{HTML}{F6CFCB}
+\definecolor{rline}{HTML}{B64342}
+\definecolor{nfill}{HTML}{EFEFEF}
+\definecolor{nline}{HTML}{767676}
+\definecolor{ink}{HTML}{272727}
+\tikzset{
+  >={Stealth[length=4pt]},
+  box/.style={draw=nline, fill=nfill, rounded corners=2pt, align=center, inner sep=4pt, line width=0.6pt, text=ink},
+  ours/.style={draw=bmain, fill=blight, rounded corners=2pt, align=center, inner sep=4pt, line width=0.9pt, text=ink},
+  data/.style={draw=gline, fill=gfill, rounded corners=2pt, align=center, inner sep=4pt, line width=0.6pt, text=ink},
+  warn/.style={draw=rline, fill=rfill, rounded corners=2pt, align=center, inner sep=4pt, line width=0.6pt, text=ink},
+  arr/.style={->, line width=0.8pt, draw=ink},
+  lab/.style={font=\footnotesize\itshape, text=nline, align=center},
+}
+\newcommand{\ffpp}{FF\texttt{++}}

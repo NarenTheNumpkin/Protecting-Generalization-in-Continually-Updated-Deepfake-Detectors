@@ -1,0 +1,154 @@
+@appendix ADDITIONAL RESULTS {app:results}
+
+This appendix gives the full numbers behind several results that Chapter 5 reports in summary form.
+
+
+Table {tab:stagewise} gives the unseen-panel score of the intermediate models of stream S1 that {fig:stagewise} plots.
+
+@table tab:stagewise | Unseen-panel score $U$ after each update of stream S1 (seed 0) | widths=1.9,1.0,1.0,1.0,1.0 | align=lcccc | size=10
+Method | Base | After DFDC-P | After DFD | After CDF
+Seq. FT | 87.97 | 87.50 | 87.87 | 86.17
+LwF | 87.97 | 88.06 | 88.17 | 86.88
+Symmetric KD | 87.97 | 87.96 | 88.07 | 86.95
+Sym. KD + LwF | 87.97 | 88.13 | 88.21 | 87.54
+GA | 87.97 | 88.10 | 88.33 | 87.45
+GA+LwF | 87.97 | 88.21 | 88.38 | 87.88
+@endtable
+
+Table {tab:longsteps} gives the unseen-panel score after every update of the nine-update stream ({fig:long}). WildDeepfake is scored with eight frames per sequence, so the starting value is 87.90 rather than 87.97.
+
+@table tab:longsteps | Unseen-panel score $U$ after every update of the nine-update stream (seed 0) | widths=1.2,0.72,0.72,0.82,0.72,0.72,0.82 | align=lcccccc | size=10
+After update | Seq. FT | LwF | Sym. KD + LwF | GPL | GA | GA+LwF
+Base | 87.90 | 87.90 | 87.90 | 87.90 | 87.90 | 87.90
+DFDC-P 1 | 86.70 | 87.67 | 87.73 | 86.59 | 87.60 | 87.85
+DFDC-P 2 | 85.11 | 86.96 | 87.28 | 85.72 | 87.15 | 87.55
+DFDC-P 3 | 84.93 | 86.50 | 86.99 | 85.10 | 86.92 | 87.37
+DFDC-P 4 | 81.49 | 85.24 | 86.13 | 84.10 | 85.87 | 86.83
+DFD 1 | 85.05 | 86.40 | 86.53 | 83.98 | 86.53 | 87.14
+DFD 2 | 83.44 | 86.09 | 86.44 | 84.01 | 86.10 | 87.15
+DFD 3 | 82.71 | 85.72 | 86.37 | 83.42 | 85.67 | 87.06
+DFD 4 | 84.07 | 86.07 | 86.48 | 83.49 | 85.97 | 87.21
+Celeb-DF | 81.78 | 84.88 | 85.82 | 83.58 | 85.55 | 86.91
+@endtable
+
+Table {tab:robustfull} gives the unseen-panel score of the final S1 models under every degradation of Section {sec:robust}.
+
+@table tab:robustfull | Unseen-panel score $U$ under image degradations (final S1 models, seed 0) | widths=1.2,0.58,0.58,0.58,0.58,0.58,0.58,0.58,0.58,0.58 | align=lccccccccc | size=9
+Condition | No upd. | Seq. FT | EWC | LwF | Sym. KD | LN merg. | SKD+LwF | GA | GA+LwF
+Clean | 87.90 | 86.17 | 86.29 | 86.86 | 86.92 | 87.52 | 87.50 | 87.37 | 87.83
+JPEG 75 | 86.23 | 85.41 | 85.49 | 85.47 | 85.43 | 86.16 | 86.03 | 85.92 | 86.42
+JPEG 50 | 85.62 | 84.65 | 84.58 | 84.88 | 84.47 | 85.62 | 85.23 | 84.93 | 85.66
+JPEG 30 | 83.55 | 82.30 | 82.27 | 82.19 | 82.13 | 83.27 | 82.84 | 82.68 | 83.34
+Blur 1 | 83.58 | 82.39 | 82.53 | 82.18 | 82.33 | 83.14 | 82.84 | 83.02 | 83.41
+Blur 2 | 76.32 | 76.09 | 75.92 | 74.98 | 75.50 | 76.22 | 75.43 | 76.18 | 76.07
+Blur 3 | 71.35 | 72.06 | 72.10 | 70.86 | 71.13 | 71.58 | 70.93 | 71.75 | 71.49
+Noise 5 | 87.20 | 85.73 | 85.72 | 86.00 | 85.92 | 86.53 | 86.70 | 86.72 | 87.29
+Noise 10 | 83.46 | 82.71 | 82.72 | 82.30 | 82.42 | 82.78 | 83.12 | 83.48 | 83.89
+Noise 20 | 76.49 | 77.30 | 77.34 | 75.82 | 76.51 | 76.29 | 76.67 | 77.65 | 77.59
+Scale 0.5 | 84.65 | 82.87 | 82.88 | 83.00 | 83.16 | 83.83 | 83.87 | 83.85 | 84.39
+Scale 0.35 | 81.66 | 79.41 | 79.30 | 79.51 | 79.97 | 80.41 | 80.72 | 80.84 | 81.38
+Scale 0.25 | 76.75 | 74.87 | 74.34 | 74.95 | 75.42 | 75.65 | 75.95 | 76.29 | 76.67
+Scale 0.5 + JPEG 50 | 83.34 | 82.33 | 82.37 | 82.20 | 82.11 | 83.26 | 82.75 | 82.70 | 83.30
+$U_{\mathrm{deg}}$ (mean of 13) | 81.55 | 80.62 | 80.58 | 80.33 | 80.50 | 81.13 | 81.01 | 81.23 | **81.61**
+@endtable
+
+@note WildDeepfake with eight frames per sequence. Blur and noise: $\sigma$ in pixels and in grey levels; scale: down-scaling factor followed by up-scaling.
+
+Table {tab:recal} reports the recalibration study of Section {sec:calib}.
+
+@table tab:recal | Recalibration after the last update using only current-task data | widths=1.45,0.55,0.55,0.55,0.55,0.55,0.55,0.55,0.55 | align=lcccccccc | size=9.5
+Method | Test raw | Test bias | Test Platt | Panel raw | Panel bias | Panel Platt | ACC raw | ACC Platt
+No update | 0.056 | 0.056 | 0.049 | 0.061 | 0.080 | 0.114 | 87.8 | 83.9
+Seq. FT | 0.040 | 0.043 | 0.082 | 0.118 | 0.107 | 0.177 | 83.3 | 85.5
+LwF | 0.056 | 0.066 | 0.042 | 0.090 | 0.075 | 0.146 | 85.0 | 87.0
+Sym. KD + LwF | 0.066 | 0.062 | 0.058 | 0.081 | 0.083 | 0.160 | 86.9 | 86.6
+GA | 0.050 | 0.051 | 0.065 | 0.113 | 0.112 | 0.185 | 86.9 | 87.6
+GA+LwF | 0.072 | 0.066 | 0.054 | 0.081 | 0.091 | 0.167 | 87.6 | 87.0
+@endtable
+
+@note ECE on the four test splits and on the unseen panel without recalibration (raw), with a fitted bias and with Platt scaling, fitted on 25 genuine and 25 manipulated Celeb-DF development videos; ACC: mean test accuracy (%) at threshold 0.5.
+
+@appendix REGISTERED EXPERIMENTAL DECISIONS {app:registration}
+
+Every stage of the project was registered before its runs, in a document stored with its SHA-256 hash. Table {tab:registrations} lists these documents and what each fixed. The documents, the hashes and the files written by the registered decision rules are included in the public repository.
+
+@table tab:registrations | Registration documents of the project | widths=1.85,4.05 | align=ll | size=10
+Document | Content fixed before the runs
+Development protocol | Splits, few-shot sampling, development gates, primary development score (FaceShifter probe)
+Exploratory E1 and E2 | Variants compared on development data and the rule that selected the configuration to confirm
+Confirmation C1 | Clean retrain of GenD, sealed test splits, unseen panel, three confirmatory hypotheses and two guardrails
+Unseen panel | Composition and preprocessing of the WildDeepfake and DeepFakeFace panel, sealed before scoring
+Extension J1 | Task orders, Perception Encoder, mechanism controls, weight sweeps and data regimes (18 hypotheses with C1)
+Extension J2 | Degradations (three hypotheses), per-manipulation analysis, recalibration, qualitative analyses
+Extension J3 | GPL re-implementation and its learning-rate rule, five seeds, nine-update stream
+Extension J4 | Matched-plasticity grids and rule, low false-positive operating points, label-independent crops
+@endtable
+
+Two settings were chosen by registered rules on development data. For GPL, the watermark generator was trained with learning rates $10^{-4}$ and $10^{-3}$ on stream S1 with the development splits. The rule was to keep the candidates whose mean gain is at least half that of sequential fine-tuning and to take the one with the higher FaceShifter probe AUROC, or, if neither qualified, the one with the higher gain. With $10^{-4}$ the generator barely learned (gain 0.01), with $10^{-3}$ it reached a gain of 1.53 against 1.58 for sequential fine-tuning, so $10^{-3}$ was chosen. For the matched-plasticity experiment, the setting of each competitor whose mean development gain was closest to that of GA+LwF (1.03) was selected, with ties broken toward the more regularized setting. The development gains were 1.29, 0.94, 0.71 and 0.43 for LwF with $\lambda_l$ of 1, 2, 4 and 10; 1.58, 1.09 and 0.54 for sequential fine-tuning with learning rates $10^{-4}$, $3\cdot10^{-5}$ and $10^{-5}$; and 1.32, 1.09 and 0.85 for GA with $\lambda$ of 1, 3 and 10. The rule therefore chose $\lambda_l=2$, a learning rate of $3\cdot10^{-5}$ and $\lambda=3$.
+
+The settings of GPL that its paper does not report were fixed before any GPL run. The watermark generator consists of three $3\times3$ convolutional layers with 8, 16 and 32 channels, each followed by $2\times2$ max pooling, and a final $1\times1$ convolution with a sigmoid that produces a mask at one eighth of the input resolution, which is upsampled and multiplies a learned watermark shared by all samples. The watermark is initialized at zero, so that the initial model equals the base detector, and the temperature of the hyperbolic contrastive loss is 0.1. The conflicting gradient component is removed completely, unit-length features are mapped into the Poincaré ball with the exponential map at the origin, and the 25 cluster centers per class are computed with spherical k-means on eight frames of each of 100 genuine and 100 manipulated FaceForensics++ fitting videos.
+
+@appendix SOURCE CODE OF THE UPDATE STEP {app:code}
+
+The listing below is the central part of the training function in `experiments/stream.py`, slightly condensed for printing: the branch of the GPL re-implementation, the prototype-memory variants and the logging are omitted, and the repeated cosine-drift expression is written as a helper function. It shows how every method shares the same loop and differs only in the term added to the GenD loss. In the code, `realkd` denotes genuine-sample alignment (GA) and `realkd_lwf` the combination GA+LwF; label 0 is genuine and label 1 manipulated.
+
+@code
+def embed(model, x):
+    """Returns (logits, unit-norm features)."""
+    f = model.feature_extractor(x)
+    return model.model(f), F.normalize(f.float(), dim=1)
+
+def gend_loss(logits, z, y, ce=1.0, unif=0.5, align=0.1):
+    return (ce * F.cross_entropy(logits.float(), y)
+            + unif * uniformity(z) + align * alignment(z, y))
+
+def cos_drift(z, z_p, sel):          # mean of 1 - cos over selected samples
+    return (1 - (z[sel] * z_p.float()[sel]).sum(1)).mean()
+
+def train_task(model, prev, train_videos, args, fisher=None, anchor=None):
+    params = [p for p in model.parameters() if p.requires_grad]
+    opt = torch.optim.Adam(params, lr=args.lr)
+    ds = FrameSet(frames(train_videos),
+                  model.feature_extractor.preprocess, True)
+    dl = DataLoader(ds, batch_size=args.batch, shuffle=True,
+                    drop_last=True)
+    total = args.epochs * len(dl)
+    sched = torch.optim.lr_scheduler.LambdaLR(
+        opt, lambda s: 0.5 * (1 + math.cos(math.pi * s / total)))
+    m = args.method
+    for ep in range(args.epochs):
+        model.train()
+        for x, y, _ in dl:
+            x, y = x.cuda(), y.cuda()
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                logits, z = embed(model, x)
+                if m not in ("seq", "ewc"):      # frozen previous model
+                    with torch.no_grad():
+                        logits_p, z_p = embed(prev, x)
+            loss = gend_loss(logits, z, y)
+            if m in ("lwf", "realkd_lwf", "featkd_lwf"):   # logits
+                T = 2.0
+                kd = F.kl_div(F.log_softmax(logits.float() / T, 1),
+                              F.softmax(logits_p.float() / T, 1),
+                              reduction="batchmean") * T * T
+                loss = loss + args.lam * kd
+            if m in ("featkd", "featkd_lwf"):              # all faces
+                loss = loss + args.lam * cos_drift(z, z_p, slice(None))
+            if m in ("realkd", "realkd_lwf") and (y == 0).any():
+                loss = loss + args.lam * cos_drift(z, z_p, y == 0)  # GA
+            if m == "fakekd" and (y == 1).any():           # fakes only
+                loss = loss + args.lam * cos_drift(z, z_p, y == 1)
+            if m == "randkd" and (y == 0).any():  # random, same count
+                n = int((y == 0).sum())
+                sel = torch.randperm(len(y), device=y.device)[:n]
+                loss = loss + args.lam * cos_drift(z, z_p, sel)
+            if m == "ewc":                                 # Fisher
+                pen = sum((fisher[n] * (p - anchor[n]) ** 2).sum()
+                          for n, p in model.named_parameters()
+                          if p.requires_grad)
+                loss = loss + args.lam * pen
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            opt.step()
+            sched.step()
+@endcode

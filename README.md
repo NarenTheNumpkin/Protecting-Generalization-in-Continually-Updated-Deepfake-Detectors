@@ -55,3 +55,12 @@ files), keeping the `IEEEtran.cls` already in `paper/`.
 
 The plots are drawn by `paper/make_figures.py` in the style of
 [figures4papers](https://github.com/ChenLiu-1996/figures4papers); it reads the experiment outputs from `experiments/`.
+
+## Demo
+
+`demo/` scores face images with the original detector and the two updated versions (plain fine-tuning and GA+LwF);
+see `demo/README.md`.
+
+## Report
+
+`report/` builds the project report (Word) from the university template; see `report/README.md`.

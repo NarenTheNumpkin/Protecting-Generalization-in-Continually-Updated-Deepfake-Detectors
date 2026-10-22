@@ -1,0 +1,124 @@
+@chapter IMPLEMENTATION AND EXPERIMENTAL SETUP {ch:setup}
+
+This chapter describes how the methods of Chapter 3 were implemented and evaluated: the computing environment, the datasets and how they were split, the face preprocessing, the task streams, the training configuration, the statistical protocol, the stages in which the experiments were run, the organization of the code, and the ethical aspects of working with face data.
+
+@section HARDWARE AND SOFTWARE ENVIRONMENT {sec:env}
+
+All experiments ran on a single workstation GPU. Table {tab:env} lists the hardware and the main software versions. The detector is loaded from the released GenD weights through the Transformers library, and all training and evaluation code is written in PyTorch \cite{paszke2019pytorch}. Training uses bfloat16 mixed precision, which halves the memory used by activations; a complete three-update stream peaks at about 5.5 GiB of GPU memory, so two training runs could share the card.
+
+@table tab:env | Hardware and software environment | widths=2.3,3.6 | align=ll | size=10.5
+Component | Version or specification
+GPU | NVIDIA GeForce RTX 5060 Ti, 16 GB
+Operating system | Linux (Ubuntu-based container)
+Python | 3.12
+PyTorch / torchvision | 2.8.0 / 0.23.0, built for CUDA 12.8
+Hugging Face Transformers | 4.56.2
+timm / Lightning | 1.0.20 / 2.5.5
+NumPy / SciPy / scikit-learn | 2.2.6 / 1.18.1 / 1.6.1
+pandas / Pillow / Matplotlib | 2.3.3 / 11.3.0 / 3.10.6
+Face detection | RetinaFace, as packaged with GenD
+@endtable
+
+@section DATASETS {sec:data}
+
+Table {tab:data} lists the datasets and the role each plays. The base task is FaceForensics++ at compression c23 with its four manipulation methods, on which GenD is trained. The default stream S1 then adds DFDC-Preview, the DeepFakeDetection set (DFD) and Celeb-DF v2 (CDF), the order used by recent continual deepfake detection work \cite{pan2023dfil,zhang2025gpl}. The FaceShifter videos of FaceForensics++ are never trained and are used only as a development probe of generalization. WildDeepfake and DeepFakeFace form the sealed unseen panel.
+
+@table tab:data | Datasets, roles and numbers of genuine / manipulated videos (images for DeepFakeFace) | widths=1.75,1.15,1.05,1.05,1.0 | align=llccc | size=10
+Dataset | Role | Fitting pool | Development | Test
+FaceForensics++ c23 | Base task | 720 / 2880 | 140 / 560 | 140 / 558
+DFDC-Preview | Update | 551 / 1599 | 262 / 272 | 230 / 424
+DeepFakeDetection | Update | 110 / 254 | 59 / 143 | 194 / 792
+Celeb-DF v2 | Update | 30 / 45 | 150 / 150 | 178 / 340
+FaceShifter | Dev. probe | – | 140 / 140 | –
+WildDeepfake | Sealed unseen | – | – | 396 / 410
+DeepFakeFace | Sealed unseen | – | – | 1000 / 2967
+@endtable
+
+Neither WildDeepfake nor DeepFakeFace was used by GenD for training or checkpoint selection, and both were registered and sealed before any model was evaluated on them. For WildDeepfake the official test split is used. For DeepFakeFace a fixed random sample of 1000 genuine images and 1000 images from each of the Stable Diffusion inpainting, InsightFace face-swap and Stable Diffusion text-to-image subsets was drawn; 998, 1000 and 969 of these contained a detectable face. Each update draws 25 genuine and 25 manipulated videos from the fitting pool of its dataset.
+
+@section IDENTITY-DISJOINT SPLITS {sec:splits}
+
+A detector can appear to generalize when it has simply seen the same people during training, so every split in this project is identity disjoint: no person appears in more than one of the fitting pool, the development split and the test split of a dataset. The splits were written once, before any experiment, by a dedicated script, and stored as manifests with their SHA-256 hashes.
+
+Each dataset required its own treatment. FaceForensics++ uses its official split. DFDC-Preview also uses its official split, after removing the two identities that occur in both its training and test sets. DFD has no official split, and the widely used DeepfakeBench \cite{yan2023deepfakebench} configuration places every DFD video in its training, validation and test lists at the same time. We therefore divided the 28 DFD actors into fitting, development and test groups, and admitted a manipulated video involving actors $A$ and $B$ to a role only if both actors belong to that role. In Celeb-DF, all 56 test identities also occur in videos outside the test set, so the fitting pool was restricted to videos whose identities are clean.
+
+One problem was found and corrected during development. In the first version of the splits, the genuine Celeb-DF samples in the fitting pool were mostly YouTube videos, while all Celeb-DF manipulated videos are derived from celebrity interview videos. A detector could then separate the classes by video source rather than by manipulation, and under this confound learning Celeb-DF actually reduced the accuracy on Celeb-DF. The corrected version draws genuine samples from celebrity videos only. All reported results use the corrected splits, and the superseded version is kept in the release for transparency.
+
+@section FACE EXTRACTION AND PREPROCESSING {sec:preprocessing}
+
+Video datasets are processed with the GenD face pipeline at 32 evenly spaced frames per video: each frame is passed to the RetinaFace detector, the face is aligned from five landmarks with a margin of 1.3, and the crop is saved at $224\times224$ pixels. At training and test time the crops are center-cropped and normalized with the mean and standard deviation of CLIP.
+
+Multi-person scenes need special care. In FaceForensics++ and DFD the manipulated face is not always the largest one, so the manipulated videos of these two datasets are cropped with the official manipulation masks, which identify the manipulated face. Without masks, the largest-face rule crops bystanders in DFD scenes such as group meetings and reduces the DFD AUROC of the released GenD model from 97.59 to 91.40. The DFD masks are distributed as fragmented MP4 files whose frame count cannot be read by the standard decoder, so they were remuxed losslessly before use. Because masks exist only for manipulated videos, face selection depends on the label for these two datasets; Section {sec:permanip} repeats the evaluation with largest-face crops for every video to measure the effect. The unseen panel involves no masks.
+
+DFDC-Preview and WildDeepfake are distributed as face crops rather than full frames, so their crops were re-detected and re-aligned with the same pipeline. WildDeepfake crops are tight, and the detector found a face in only 30% of the frames. Adding a 25% border around each crop before detection raised the detection rate to 99.8%. This change was fixed before the panel was scored.
+
+@section TASK STREAMS {sec:streams}
+
+Table {tab:streams} lists the task streams. Stream S1 is the default. S2 and S3 change the order of the updates and follow the orders used in earlier continual deepfake detection work: S2 swaps the last two tasks and S3 learns DFD first. A second foundation encoder is tested by repeating S1 with the Perception Encoder (PE) variant of GenD, which tunes 106,498 normalization and head parameters of a different encoder. The nine-update stream tests whether drift accumulates over many updates: it splits the fitting pools into disjoint few-shot sessions of 25 genuine and 25 manipulated videos, four sessions of DFDC-Preview, four of DFD and the single session that the small Celeb-DF fitting pool allows.
+
+@table tab:streams | Task streams used in the experiments | widths=1.15,3.4,1.35 | align=lll | size=10
+Stream | Order of tasks | Encoder
+S1 | FF++ → DFDC-P → DFD → CDF | CLIP ViT-L/14
+S2 | FF++ → DFDC-P → CDF → DFD | CLIP ViT-L/14
+S3 | FF++ → DFD → DFDC-P → CDF | CLIP ViT-L/14
+PE | FF++ → DFDC-P → DFD → CDF | Perception Encoder
+Nine updates | FF++ → 4 × DFDC-P → 4 × DFD → CDF | CLIP ViT-L/14
+@endtable
+
+@section TRAINING CONFIGURATION {sec:config}
+
+Table {tab:hyper} lists the training settings. They were fixed before the experiments, from the defaults of GenD, with $\lambda=1$ for every regularizer. No method was tuned individually, with two exceptions that were both decided on development data by registered rules: the learning rate of the GPL watermark generator (Section {sec:baselines}) and the settings of the matched-plasticity experiment (Section {sec:matched}). Optimization uses Adam \cite{kingma2015adam} with a cosine learning-rate schedule that decays to zero over the ten epochs of each task. A seed fixes the few-shot samples and all training randomness.
+
+@table tab:hyper | Training configuration shared by all methods | widths=2.6,3.3 | align=ll | size=10.5
+Setting | Value
+Trainable parameters | LayerNorm affine parameters and head (104,450)
+Initialization | GenD checkpoint (GPL watermark from zero)
+Few-shot sample per update | 25 genuine and 25 manipulated videos
+Frames used for training | all 32 frames of each video
+Epochs per task | 10, no early stopping, last epoch kept
+Optimizer | Adam, $\beta=(0.9,0.999)$, no weight decay
+Learning rate and schedule | $10^{-4}$, cosine decay to zero, no warm-up
+Batch size | 16 frames, shuffled each epoch
+Precision | bfloat16 mixed precision
+Augmentation | GenD default training augmentations
+Regularization weights | $\lambda_g=\lambda_l=1$, LwF temperature $T=2$
+Evaluation frames | 8 per video (32 for calibration analyses)
+@endtable
+
+Unless stated otherwise, test splits are scored with eight evenly spaced frames per video, which keeps the evaluation of the many intermediate models affordable. The calibration, per-manipulation and operating-point analyses use all 32 frames. Rescoring the final models with 32 frames changes AA by at most 0.3 points and preserves the ordering of the methods.
+
+@section STATISTICAL PROTOCOL {sec:stats}
+
+A hypothesis is confirmed if the difference in $U$ between two methods is positive and its paired 95% bootstrap interval \cite{efron1994bootstrap} excludes zero. Pairing means that both methods are evaluated on the same resampled test units, so the interval reflects only the difference between them. With 2000 resamples, WildDeepfake is resampled by source video within each class, because its face sequences from the same video are not independent, and DeepFakeFace is resampled by image, with the genuine images resampled once and shared by the three generator comparisons, as they are in the score itself.
+
+The registered hypotheses form families that are tested separately: confirmation (3 hypotheses), mechanism controls (3), replication (12), robustness (3), comparison with GPL (4), five seeds (5), the nine-update stream (3) and matched plasticity (2). Over the first three families together, the family-wise error rate is additionally controlled with the Holm procedure \cite{holm1979}, using one-sided bootstrap p-values from 10,000 resamples; the seed and matched-plasticity families are Holm-corrected within themselves. Differences in AA on the test splits are given with paired bootstrap intervals that resample identity clusters within each class and dataset.
+
+A difference that is not significant does not show equivalence. Where the report states that a score is retained, it gives the interval of the difference to the never-updated detector and, as an exploratory analysis chosen after the point estimates were known, compares it with a margin of one AUROC point. Bootstrap intervals reflect the variability of the test samples but not the variability between training runs. For the main comparison on stream S1, every method was therefore also trained with five seeds, which change the few-shot samples and all training randomness while keeping the initial GenD model fixed, and differences in $U$ were tested with one-sided paired t-tests across seeds, Holm-corrected over the five registered comparisons. The other settings use one seed and rely on replication across task orders, encoders, regularization strengths and data regimes.
+
+@section EXPERIMENTAL STAGES {sec:stages}
+
+{fig:stages} shows the order in which the experiments were run. Development used the released GenD checkpoint, the development splits and three seeds. It first checked that updating damages generalization at all (Gate 1) and that the candidate update beats regularizers on the same backbone (Gate 2), and then compared variants in two exploratory stages, which selected GA+LwF.
+
+@fig figs/diag_stages.png | 5.2 | fig:stages | Experimental stages of the project
+
+Confirmation used a GenD model that we retrained on FaceForensics++ following the authors' recipe, but with the checkpoint selected on FaceForensics++ validation data only (epoch 8), together with the sealed test splits and the sealed unseen panel. This retrain was necessary because the released checkpoint was selected on a validation pool that includes data from the Celeb-DF family, so its cross-dataset scores are not strictly zero-shot. Four extension stages followed: the first added task orders, the second encoder, mechanism controls, weight sweeps and data regimes; the second added inference-only analyses; the third added the GPL comparison, more training seeds and the nine-update stream; and the fourth added matched plasticity, low false-positive operating points and label-independent face crops.
+
+Every stage was registered before its runs. The hypotheses, the primary score, the decision rules and any amendments were written down and hashed with SHA-256, and no method, hyperparameter or preprocessing choice was made from confirmation or extension results. The registrations were stored locally with their hashes and file dates; they were not deposited with an independent timestamping service, so their dates cannot be verified by a third party. In total the project trained 148 continual runs, each consisting of a full stream of updates and evaluations.
+
+@section SOFTWARE ORGANIZATION {sec:software}
+
+The code is organized as a Python package with three top-level directories: `experiments` for training and analysis, `paper` for the manuscript sources and figure scripts, and `results` for the summaries behind the reported tables. All file locations are defined in one module, `paths.py`, and can be overridden with environment variables, so the code runs on another machine without editing.
+
+The module `common.py` holds the parts shared by all experiments: loading the GenD model and its trainable state, reading the split manifests, drawing few-shot samples for a given seed, a dataset class that yields augmented frames, the GenD loss, and the evaluation functions that compute video scores, AUROC, accuracy, false-positive rate and calibration error on a split or on the unseen panel. The module `stream.py` implements the continual protocol of Algorithm {alg:stream} and every update method of Section {sec:baselines} in a single training function, selected with a command-line flag. Keeping all methods in one function guarantees that they share the data loader, optimizer, schedule, precision and evaluation, so that they differ only in their regularization term. Appendix 3 lists the central part of this function.
+
+Separate scripts build the splits, preprocess the unseen panel, run the jobs of each stage on a queue and analyze the results exactly as registered, including the bootstrap tests and the Holm correction. The figure script reads only saved results, so every number in a figure can be traced to a result file. A typical run is started with a single command, for example
+
+@code
+python stream.py --method realkd_lwf --seed 0 --init "$GEND_INIT_CKPT" --eval-role test --panel
+@endcode
+
+which updates the detector over stream S1 with GA+LwF (`realkd_lwf` in the code), evaluates it on the sealed test splits after every update and scores the unseen panel at the end. Each run writes its arguments, all stage-wise metrics, the per-video predictions on the unseen panel and the trainable parameters after every update. The code, split manifests, registrations and result summaries are available at https://github.com/NarenTheNumpkin/Protecting-Generalization-in-Continually-Updated-Deepfake-Detectors.
+
+@section ETHICAL CONSIDERATIONS {sec:ethics}
+
+The project works with videos and images of real people. All datasets were obtained from their owners under their research licences and are used only for detection research. No video, image or face crop is redistributed: the public repository and the local reproducibility package contain split manifests, which list file names, but no dataset content, and saliency maps that embed pixel values were removed from the released analysis files. The face examples shown in Chapter 5 come from DeepFakeFace, whose images are already distributed publicly for research. The project generates no new deepfakes. One of the design constraints of the setting, that an update stores no data from earlier tasks, is itself motivated by privacy: a detector that must keep raw faces of earlier datasets to stay accurate creates a growing store of personal data.

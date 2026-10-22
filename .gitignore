@@ -34,3 +34,14 @@ paper/*.pfb
 paper/*.tfm
 paper/*.map
 paper/*.fd
+# demo: dataset samples, personal photos and outputs are not committed
+demo/samples/
+demo/my_images/
+demo/results*/
+# author photos of the IEEE Access version
+paper/figures/author_*
+# project report: university template and generated files
+report/template.docx
+report/out/
+report/figs/
+report/_*

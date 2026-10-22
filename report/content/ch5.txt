@@ -1,0 +1,396 @@
+@chapter RESULTS AND DISCUSSION {ch:results}
+
+This chapter reports the results in the order in which the questions arise. Section {sec:repro} checks that the base detector is reproduced and measures what an ordinary update costs. Section {sec:devresults} reports the development comparison that selected the studied update, and Section {sec:main} the main comparison on sealed data. Section {sec:generality} tests how general the result is, Section {sec:mechanism} analyzes the mechanism, and Section {sec:robustcal} covers robustness, calibration and computational cost. Section {sec:discussion} discusses what the results mean and where they stop. Unless stated otherwise, AUROC values are percentages and differences are given in AUROC points.
+
+@section BASE DETECTOR AND THE COST OF UPDATING {sec:repro}
+
+@subsection REPRODUCTION OF GenD {sec:reproduction}
+
+Table {tab:repro} compares the scores reported for GenD with those obtained with our pipeline. With the released weights, the pipeline reproduces the reported Celeb-DF and DFD results within the bootstrap intervals. The model that we retrained with checkpoint selection on FaceForensics++ validation data only is equally strong on its own test set (98.21), but it is 3.1 points lower on Celeb-DF than the released weights, and 2.6 points below the reported value, and 4.3 points lower on DFDC-Preview. Part of the published cross-dataset performance therefore appears to depend on checkpoint selection with data from the target family. The accuracy reported by the official evaluation code uses the equal-error threshold computed on the test labels, which is not available in practice, so this project reports accuracy at a fixed threshold throughout.
+
+@table tab:repro | Video AUROC (%) of GenD: reported, released weights and clean retrain | widths=1.6,1.2,2.0,1.2 | align=lccc | size=10.5
+Test set | Paper | Released weights | Clean retrain
+FaceForensics++ test | – | – | 98.21
+Celeb-DF v2 | 94.6 | 95.11 [92.95, 96.81] | 92.04
+DFD | 96.4 | 97.59 [96.80, 98.30] | –
+DFDC-Preview | – | 90.00 | 85.66
+@endtable
+
+@note Released weights are evaluated with our pipeline; the retrained model selects its checkpoint on FaceForensics++ validation data only. Brackets give 95% bootstrap intervals; dashes denote values that were not reported or not evaluated.
+
+@subsection THE COST OF AN UPDATE {sec:cost}
+
+Starting from the released checkpoint, sequential fine-tuning on stream S1 learns every task, with a mean gain of 2.10 AUROC points, and forgets little, with an average forgetting of 0.79 points. By the usual continual learning metrics the update is a success. Two other costs, however, are large and consistent across seeds. Detection of the FaceShifter manipulation, which belongs to FaceForensics++ but is never trained, falls from 84.85 to 77.06 AUROC (range over three seeds 76.44 to 77.39). The accuracy of the base task at the fixed threshold 0.5 drops from 95.0% to 79.9%, although its AUROC remains above 95. Updating a generalizable detector therefore mainly damages two things that the standard metrics do not show: its generalization and its calibration. This finding motivates everything that follows.
+
+@section DEVELOPMENT RESULTS {sec:devresults}
+
+Table {tab:dev} and {fig:dev} report the development comparison, run with the released checkpoint on the development splits with three seeds. Restricting feature distillation to genuine faces improves the FaceShifter probe over symmetric distillation in all six paired comparisons, by 2.0 points on average, with higher AA and lower forgetting. Adding a prototype memory to GA changed nothing and was removed. GA and LwF were complementary: their combination reached 82.85 on the probe, about two points above either component alone, at a cost in plasticity, with a gain of 1.05 against 2.10 for sequential fine-tuning. On the basis of these results GA+LwF was selected, by the registered rule, as the configuration to confirm on sealed data.
+
+@table tab:dev | Development results (released GenD, development splits, three seeds) | widths=1.75,1.75,0.65,0.6,0.6,0.75 | align=lccccc | size=10
+Method | FSh | AA | AF | Gain | $\mathrm{ACC}_{\mathrm{FF}}$
+No update | 84.85 | 97.20 | – | – | 95.0
+Seq. FT | 77.06 [76.44, 77.39] | 97.78 | 0.79 | 2.10 | 79.9
+EWC | 76.67 [75.52, 77.34] | 97.73 | 0.84 | 2.10 | 79.7
+SDC replay | 76.94 [75.66, 78.65] | 97.70 | 0.86 | 2.05 | 78.9
+Symmetric KD | 78.66 [77.57, 79.48] | 98.18 | 0.31 | 1.51 | 85.1
+LN merging | 80.38 [79.94, 81.01] | 97.57 | 0.30 | 0.85 | 88.1
+LwF | 80.49 [80.23, 80.69] | 97.95 | 0.30 | 1.39 | 86.3
+GA + memory | 80.69 [79.54, 81.58] | 98.42 | 0.13 | 1.38 | 87.6
+GA | 80.67 [79.30, 81.63] | 98.42 | 0.13 | 1.40 | 87.8
+GA + memory + LwF | 82.84 [81.99, 83.38] | 98.26 | −0.01 | 1.05 | 91.1
+GA+LwF | **82.85** [82.05, 83.52] | 98.26 | 0.01 | 1.05 | **91.5**
+@endtable
+
+@note FSh: FaceShifter probe AUROC after all updates, mean and [minimum, maximum] over seeds. Development splits are scored with 8 frames per video.
+
+@fig figs/fig_dev_curves.png | 4.9 | fig:dev | FaceShifter probe AUROC along the update stream on development data
+
+The lines in {fig:dev} show the mean over three seeds and the shaded bands the range. Sequential fine-tuning loses most of its probe performance at the first update, while GA+LwF declines slowly and ends highest.
+
+@section MAIN COMPARISON ON SEALED DATA {sec:main}
+
+@subsection OVERALL RESULTS {sec:overall}
+
+Tables {tab:mainunseen} and {tab:maintrained} report all methods on stream S1, starting from the clean retrained model and evaluated on the sealed test splits and the sealed unseen panel. GA+LwF keeps the unseen score close to that of the never-updated detector ($U=87.88$ against 87.97), whereas LwF loses 1.09 points and sequential fine-tuning 1.80 points. The three confirmatory hypotheses of this stage hold (Table {tab:hyp}): GA+LwF exceeds LwF by 1.00 points and sequential fine-tuning by 1.71 points, and GA exceeds symmetric distillation by 0.49 points. The guardrails registered with them also hold in this run: the AA of GA+LwF is within 0.5 points of the best method, and its mean gain is at least half that of sequential fine-tuning. Over five seeds the second guardrail is narrowly missed, at 47% (Section {sec:seeds}).
+
+@table tab:mainunseen | Stream S1 from the clean retrained GenD: sealed unseen panel | widths=1.95,0.95,0.75,0.75,0.75,0.95 | align=lccccc | size=10
+Method | Stores data | $U$ | WDF | DFF | DFF-T2I
+No update | no | 87.97 | 90.91 | 85.03 | 78.02
+Head-only FT | no | 88.11 | 91.27 | 84.94 | 77.97
+Seq. FT | no | 86.17 | 91.80 | 80.55 | 65.16
+EWC | no | 86.28 | 91.63 | 80.94 | 65.90
+Fake-only KD | no | 86.47 | 91.95 | 80.99 | 67.10
+LwF | no | 86.88 | 91.86 | 81.91 | 68.99
+Random-subset KD | no | 86.94 | 92.20 | 81.69 | 68.19
+Symmetric KD | no | 86.95 | 92.16 | 81.75 | 68.36
+LN merging | no | 87.53 | 91.59 | 83.47 | 73.17
+Symmetric KD + LwF | no | 87.54 | 91.83 | 83.25 | 72.52
+GPL (re-implemented) | centers | 85.74 | 90.89 | 80.59 | 71.50
+GA | no | 87.45 | 92.42 | 82.48 | 69.77
+GA+LwF | no | **87.88** | 91.91 | **83.86** | **73.77**
+Replay (5+5 videos per task) | yes | 86.34 | 91.81 | 80.86 | 66.96
+Joint training | yes | 87.48 | 92.33 | 82.64 | 70.40
+@endtable
+
+@note Unseen-panel AUROC with all frames, seed 0. DFF: mean over the three DeepFakeFace generators; DFF-T2I: text-to-image subset. Replay and joint training store data and are references, not exemplar-free continual methods; GPL stores base-task feature cluster centers.
+
+@table tab:maintrained | Stream S1 from the clean retrained GenD: sealed test splits of the trained datasets | widths=1.75,0.55,0.62,0.55,0.55,0.55,0.55,0.5,0.7 | align=lcccccccc | size=9.5
+Method | FF++ | DFDC-P | DFD | CDF | AA | AF | Gain | $\mathrm{ACC}_{\mathrm{FF}}$
+No update | 98.06 | 85.71 | 97.38 | 91.92 | 93.27 | – | – | 94.1
+Head-only FT | 98.05 | 85.34 | 97.70 | 92.19 | 93.32 | 0.05 | 0.02 | 94.3
+Seq. FT | 96.69 | 90.83 | 96.64 | 94.88 | 94.76 | −1.24 | 0.83 | 84.7
+EWC | 96.62 | 90.79 | 96.83 | 94.86 | 94.77 | −1.30 | 0.95 | 84.2
+Fake-only KD | 97.65 | 88.78 | 96.29 | 94.55 | 94.32 | −0.64 | 0.58 | 88.5
+LwF | 97.98 | 89.56 | 97.18 | 94.47 | 94.80 | −0.98 | 0.92 | 90.4
+Random-subset KD | 97.82 | 88.90 | 97.06 | 95.22 | 94.75 | −0.94 | 0.68 | 90.0
+Symmetric KD | 97.83 | 88.99 | 97.09 | 95.24 | 94.79 | −0.96 | 0.69 | 89.8
+LN merging | 97.89 | 87.18 | 97.47 | 93.26 | 93.95 | −0.41 | 0.37 | 90.7
+Sym. KD + LwF | 98.26 | 87.89 | 97.69 | 94.41 | 94.56 | −0.69 | 0.67 | 92.3
+GPL (re-impl.) | 95.99 | 92.28 | 95.26 | 95.59 | 94.78 | 0.69 | 2.51 | 87.0
+GA | 98.09 | 89.40 | 97.99 | 95.44 | **95.23** | −1.34 | 0.75 | 91.5
+GA+LwF | **98.32** | 88.23 | **98.15** | 94.41 | 94.78 | −0.85 | 0.74 | **93.7**
+Replay | 96.80 | 90.18 | 96.97 | 95.18 | 94.78 | −1.30 | 1.01 | 87.7
+Joint training | 97.21 | 87.61 | 98.05 | 94.87 | 94.43 | – | – | 89.8
+@endtable
+
+@note Test-split video AUROC with 8 frames per video, seed 0. AF: average forgetting (negative values indicate backward transfer); $\mathrm{ACC}_{\mathrm{FF}}$: accuracy (%) on the base task at threshold 0.5.
+
+The updates remain useful. Relative to the never-updated model, GA+LwF raises DFDC-Preview from 85.71 to 88.23, Celeb-DF from 91.92 to 94.41 and DFD from 97.38 to 98.15. It slightly improves the base task while keeping its fixed-threshold accuracy at 93.7%, compared with 84.7% after sequential fine-tuning. {fig:tradeoff} places every method in the plane of learning and generalization. Head-only fine-tuning attains the highest $U$ (88.11) only because it barely learns: its gain is 0.02 points and its AA essentially equals that of the never-updated model (93.32 against 93.27). GA and GA+LwF lie on the upper frontier among the methods that learn the new datasets. GA favors the trained datasets, with the highest AA (95.23), and GA+LwF favors the unseen ones. Neither exemplar replay nor joint training on the union of the few-shot sets is an upper bound for retention: both store data, yet both reach a lower $U$ than GA+LwF.
+
+@fig figs/fig_tradeoff_all.png | 4.9 | fig:tradeoff | Learning versus generalization for all methods on stream S1
+
+On the trained datasets no statistically significant difference between GA+LwF and its main competitors was detected, which does not establish that they are equivalent. With 32-frame predictions and intervals that resample identity clusters, the AA of GA+LwF does not differ significantly from that of sequential fine-tuning ($-0.22$, 95% interval $[-0.83,+0.42]$), EWC, replay, LwF ($-0.12$, $[-0.43,+0.17]$), symmetric KD ($-0.19$, $[-0.57,+0.21]$) or GPL ($-0.24$, $[-0.98,+0.52]$). It is higher than that of the never-updated model ($+1.52$, $[+1.07,+2.01]$) and of symmetric KD with LwF ($+0.14$, $[+0.01,+0.27]$), and lower than that of GA alone ($-0.59$, $[-0.90,-0.29]$).
+
+{fig:unseen} shows where generalization is lost. On the real-world WildDeepfake videos every update slightly improves detection, from 90.91 to between 91.27 and 92.42, probably because the stream adds diverse face-swap examples. The loss is concentrated on DeepFakeFace, and above all on the fully synthetic text-to-image faces, where sequential fine-tuning falls from 78.02 to 65.16 while GA+LwF retains 73.77. Updates on face-swap data thus erode the sensitivity of the detector to generation families that are absent from the stream, and anchoring the genuine representation limits this erosion more than any other method.
+
+@fig figs/fig_unseen_breakdown.png | 4.9 | fig:unseen | Sealed unseen datasets after all updates on stream S1
+
+@table tab:hyp | Registered hypotheses on the unseen-panel score $U$ | widths=2.4,0.75,0.8,1.55,0.6 | align=llccc | size=10
+Hypothesis | Setting | $\Delta U$ | 95% interval | $p_{\mathrm{H}}$
+C1: GA+LwF > LwF | S1 | +1.00 | [+0.70, +1.28] | 0.002
+C1: GA+LwF > Seq. FT | S1 | +1.71 | [+1.01, +2.42] | 0.002
+C1: GA > Sym. KD | S1 | +0.49 | [+0.31, +0.69] | 0.014
+M1: GA > random-subset KD | S1 | +0.51 | [+0.33, +0.70] | 0.002
+M2: GA > fake-only KD | S1 | +0.98 | [+0.66, +1.35] | 0.002
+M3: GA+LwF > Sym. KD+LwF | S1 | +0.34 | [+0.23, +0.47] | 0.002
+R1: GA+LwF > LwF | S2 | +0.80 | [+0.47, +1.15] | 0.002
+R1: GA+LwF > LwF | S3 | +1.14 | [+0.84, +1.49] | 0.002
+R1: GA+LwF > LwF | PE | +2.39 | [+1.57, +3.32] | 0.002
+R2: GA+LwF > Seq. FT | S2 | +0.69 | [+0.06, +1.35] | 0.014
+R2: GA+LwF > Seq. FT | S3 | +1.82 | [+1.13, +2.48] | 0.002
+R2: GA+LwF > Seq. FT | PE | +2.13 | [+1.07, +3.20] | 0.002
+R3: GA > Sym. KD | S2 | +0.37 | [+0.18, +0.56] | 0.002
+R3: GA > Sym. KD | S3 | +0.54 | [+0.33, +0.76] | 0.002
+R3: GA > Sym. KD | PE | +0.78 | [+0.44, +1.12] | 0.002
+R4: GA+LwF > Sym. KD+LwF | S2 | +0.34 | [+0.23, +0.47] | 0.002
+R4: GA+LwF > Sym. KD+LwF | S3 | +0.44 | [+0.31, +0.59] | 0.002
+R4: GA+LwF > Sym. KD+LwF | PE | +0.58 | [+0.30, +0.87] | 0.002
+@endtable
+
+@note A hypothesis is confirmed if $\Delta U>0$ and its paired bootstrap 95% interval excludes zero. $p_{\mathrm{H}}$: Holm-adjusted one-sided p-value over all 18 tests (10,000 resamples; the smallest attainable value is 0.0018). C1: confirmation; M: mechanism controls; R: replication.
+
+@subsection RETENTION BY FORGERY FAMILY {sec:retention}
+
+The unseen score averages forgery families that behave differently, and a difference that is not significant does not by itself show that performance is retained. Table {tab:retention} therefore reports the change relative to the never-updated detector for each family over the five training seeds, with 95% intervals from a two-level bootstrap over seeds and test units. For GA+LwF the aggregate change is $-0.19$ points, with a 95% interval of $[-0.62,+0.30]$; seed 0 alone gives $-0.09$ ($[-0.53,+0.43]$). The interval excludes losses larger than 0.62 points but does not exclude a small loss. In an exploratory analysis with a margin of one AUROC point, chosen after the point estimates were known and therefore not a prospective confirmation, the lower bound lies above $-1$. For LwF, GPL and sequential fine-tuning the intervals lie entirely below zero.
+
+@table tab:retention | Change of unseen-panel AUROC relative to the never-updated detector (five seeds) | widths=1.25,0.9,0.9,0.9,0.9,1.0 | align=lccccc | size=10 | intervals=1
+Method | $U$ | WDF | Inpainting | Face swap | Text-to-image
+GA+LwF | −0.19 | +1.09 | −0.30 | +0.56 | −4.66
+ | [−0.6, 0.3] | [0.3, 2.0] | [−0.8, 0.2] | [0.2, 0.9] | [−5.7, −3.7]
+LwF | −1.18 | +1.02 | −1.62 | +0.42 | −8.92
+ | [−1.7, −0.6] | [0.1, 2.1] | [−2.5, −0.8] | [−0.2, 1.0] | [−10.2, −7.7]
+GPL | −2.65 | −1.13 | −4.31 | −1.38 | −6.82
+ | [−3.9, −1.4] | [−3.4, 1.1] | [−5.6, −3.1] | [−2.3, −0.4] | [−9.1, −5.0]
+Seq. FT | −2.77 | +0.72 | −3.91 | −0.03 | −14.83
+ | [−3.8, −1.6] | [−0.9, 2.6] | [−5.7, −2.3] | [−1.1, 1.0] | [−16.9, −12.8]
+@endtable
+
+@note Mean over five seeds after all S1 updates, with 95% intervals from a two-level bootstrap over seeds and test units. Inpainting, face swap and text-to-image are the three DeepFakeFace generators.
+
+The aggregate hides opposite movements. WildDeepfake improves under GA+LwF ($+1.09$), as does the InsightFace face swap ($+0.56$), whereas text-to-image faces lose 4.66 points. Text-to-image faces are the worst family for every method, so retention is incomplete for fully synthetic faces, although GA+LwF loses less there than GPL ($-6.82$), LwF ($-8.92$) and sequential fine-tuning ($-14.83$).
+
+@subsection PER-MANIPULATION RESULTS AND FACE SELECTION {sec:permanip}
+
+Table {tab:permanip} breaks the trained datasets down by manipulation method, using 32-frame predictions, and adds the FaceShifter probe. On the base task, forgetting is concentrated on a single method. NeuralTextures, the most subtle FaceForensics++ manipulation, falls from 95.98 to 90.79 under sequential fine-tuning and to 90.59 under EWC, while the other three methods stay above 98.4 for every model. GA+LwF keeps NeuralTextures at 95.88, the highest value among the methods that learn. On DFDC-Preview, the methods that learn most aggressively gain most, up to 93.83 on method B for replay against 87.29 for GA+LwF; this is the plasticity price discussed in Section {sec:discussion}. FaceShifter, starting from the clean retrained model, shows the same pattern as in development: sequential fine-tuning loses 5.4 points (83.70 to 78.34) and GA+LwF only 0.5 (83.19), less than any other method that learns.
+
+@table tab:permanip | Per-manipulation test AUROC after all updates on stream S1 | widths=1.6,0.62,0.62,0.62,0.62,0.62,0.62,0.62 | align=lccccccc | size=10
+Method | DF | F2F | FS | NT | DFDC-P A | DFDC-P B | FSh
+No update | 99.41 | 98.54 | 98.91 | 95.98 | 85.66 | 85.70 | 83.70
+Head-only FT | 99.37 | 98.55 | 98.97 | 95.83 | 85.20 | 85.75 | 83.67
+Seq. FT | 99.55 | 98.53 | 99.76 | 90.79 | 90.92 | 92.01 | 78.34
+EWC | 99.54 | 98.45 | 99.73 | 90.59 | 90.70 | 93.12 | 77.63
+Replay | 99.51 | 98.42 | 99.77 | 91.08 | 89.65 | 93.83 | 79.76
+LwF | 99.54 | 98.90 | 99.50 | 95.03 | 89.61 | 88.81 | 80.93
+Symmetric KD | 99.49 | 98.94 | 99.55 | 94.64 | 89.14 | 88.13 | 80.31
+Sym. KD + LwF | 99.48 | 98.86 | 99.34 | 95.82 | 88.04 | 87.12 | 82.72
+GA | 99.48 | 98.87 | 99.58 | 95.27 | 89.54 | 88.31 | 81.80
+GA+LwF | 99.47 | 98.86 | 99.41 | 95.88 | 88.19 | 87.29 | 83.19
+@endtable
+
+@note 32 frames per video. Each column compares the genuine test videos of the dataset with one manipulation method. DF, F2F, FS, NT: Deepfakes, Face2Face, FaceSwap and NeuralTextures of FaceForensics++; A and B: the two DFDC-Preview methods; FSh: FaceShifter probe (FaceForensics++ development identities, never trained, 8 frames per video).
+
+Masks exist only for manipulated videos, so the FaceForensics++ and DFD test crops used so far depend on the label. Table {tab:labelindep} re-scores every final model with largest-face crops for all videos. FaceForensics++ changes by at most 0.21 points, because its videos rarely contain more than one face. DFD AUROC, however, falls by 4.5 to 6.6 points for every model, including the never-updated detector (97.38 to 90.82): in multi-person DFD scenes the largest face is often a genuine bystander, so part of the manipulated videos is represented by genuine faces. Mask-based numbers therefore overstate the DFD performance attainable without knowing which face is manipulated. The comparison between updating methods changes little. Under label-independent crops the methods that learn lie within 0.7 AA points of each other (93.23 to 93.86) and 1.6 to 2.3 points above the never-updated detector, and the rank correlation of the methods' AA between the two protocols is 0.60 (Kendall's $\tau$). The unseen panel, on which all retention results rest, involves no masks.
+
+@table tab:labelindep | Test AUROC with mask-based and largest-face crops | widths=1.6,0.72,0.72,0.72,0.72,0.72,0.72 | align=lcccccc | size=10
+Method | FF++ mask | FF++ largest | DFD mask | DFD largest | AA mask | AA largest
+No update | 98.06 | 97.85 | 97.38 | 90.82 | 93.27 | 91.58
+Seq. FT | 96.69 | 96.56 | 96.64 | 91.60 | 94.76 | 93.47
+LwF | 97.98 | 97.76 | 97.18 | 92.03 | 94.80 | 93.46
+Sym. KD + LwF | 98.26 | 98.11 | 97.69 | 92.50 | 94.56 | 93.23
+GPL (re-impl.) | 95.99 | 95.78 | 95.26 | 90.72 | 94.78 | 93.59
+GA | 98.09 | 97.95 | 97.99 | 92.66 | 95.23 | 93.86
+GA+LwF | 98.32 | 98.15 | 98.15 | 92.50 | 94.78 | 93.32
+@endtable
+
+@note 8 frames per video. AA: mean over the four trained datasets (DFDC-Preview and Celeb-DF involve no masks).
+
+@subsection MECHANISM CONTROLS {sec:controls}
+
+Distilling only genuine faces constrains fewer samples than distilling all faces, so a weaker constraint, rather than the choice of the genuine class, could explain the advantage of GA over symmetric distillation. The controls rule this out. Random-subset KD distills exactly as many samples per batch as GA, but chosen regardless of label; it reaches $U=86.94$, indistinguishable from symmetric KD (86.95), and GA exceeds it by 0.51 points (hypothesis M1). Fake-only KD, the mirror image of GA, is the worst distillation variant ($U=86.47$; GA better by 0.98 points, M2), and its AA is also lower (94.32). Within the combined method, replacing genuine-only feature distillation by symmetric feature distillation lowers $U$ by 0.34 points (M3). The effect is therefore tied to the genuine class and not to the number of distilled samples.
+
+@section GENERALITY OF THE RESULT {sec:generality}
+
+@subsection TASK ORDERS AND ENCODERS {sec:orders}
+
+{fig:replication} repeats the comparison for orders S2 and S3 and for the Perception Encoder (PE) variant of GenD. For PE the experiments start from the authors' released checkpoint, since no clean retrain was available; its selection pool did not include WildDeepfake or DeepFakeFace. In all three settings the ranking is the same: GA+LwF attains the highest $U$, followed by GA, and all twelve replication hypotheses hold (Table {tab:hyp}). The weakest result is GA+LwF against sequential fine-tuning in order S2, whose interval barely excludes zero ($+0.69$, $[+0.06,+1.35]$). In that order sequential fine-tuning itself loses only 0.68 points, because the last update is DFD rather than Celeb-DF.
+
+@fig figs/fig_replication_2x2.png | 5.3 | fig:replication | Unseen-panel score after all updates in four settings
+
+The encoder replication gives the strongest result. With PE, plain updating also damages the trained datasets, whose AA falls from 94.43 to 91.98 for sequential fine-tuning and to 92.78 for LwF. GA+LwF keeps AA at 94.56 and raises the unseen score above that of the never-updated detector (81.24 against 80.12). The benefit of anchoring the genuine class is therefore not a peculiarity of the CLIP encoder.
+
+@subsection COMPARISON WITH GPL {sec:gpl}
+
+GPL \cite{zhang2025gpl} is the specialized continual method closest to the goal of this project. Table {tab:gpl} compares it with GA+LwF in the four settings of the previous subsection, using our re-implementation on the same detector, splits, few-shot budget and evaluation. GA+LwF retains more generalization in every setting, and all four registered hypotheses hold: by 2.14 points on S1 ($[+1.14,+3.14]$), 1.40 on S2 ($[+0.35,+2.43]$), 2.23 on S3 ($[+1.06,+3.30]$) and 5.30 with the PE encoder ($[+2.71,+7.98]$).
+
+@table tab:gpl | GA+LwF against the re-implemented GPL after all updates (seed 0) | widths=0.8,1.1,0.7,0.7,0.7,0.7,0.7,0.8 | align=llcccccc | size=10
+Setting | Method | $U$ | T2I | AA | AF | Gain | $\mathrm{ACC}_{\mathrm{FF}}$
+S1 | GA+LwF | 87.88 | 73.77 | 94.78 | −0.85 | 0.74 | 93.7
+S1 | GPL | 85.74 | 71.50 | 94.78 | 0.69 | 2.51 | 87.0
+S2 | GA+LwF | 87.97 | 74.30 | 94.64 | 0.28 | 0.85 | 93.1
+S2 | GPL | 86.57 | 74.24 | 94.63 | 0.87 | 1.65 | 89.7
+S3 | GA+LwF | 87.90 | 73.93 | 94.75 | −1.04 | 0.88 | 92.8
+S3 | GPL | 85.67 | 71.67 | 94.16 | 1.36 | 2.41 | 86.4
+PE | GA+LwF | 81.24 | 61.75 | 94.56 | 0.75 | 0.75 | 86.5
+PE | GPL | 75.94 | 67.16 | 87.96 | 6.18 | 1.96 | 67.5
+@endtable
+
+@note Test splits with 8 frames per video. T2I: DeepFakeFace text-to-image AUROC. PE: stream S1 with the Perception Encoder backbone.
+
+The two methods trade plasticity in opposite directions. GPL learns the new datasets more completely, with a mean gain of 2.51 against 0.74 on S1, and reaches the highest DFDC-Preview score of all exemplar-free methods (92.28). It forgets the base task, however (AF 0.69, FaceForensics++ AUROC 95.99 against 98.32), and loses fixed-threshold accuracy on it (87.0% against 93.7%). On S1 the two methods reach the same AA (94.78). Because GPL changes the input of the frozen detector, its watermark alters the representation of every image, including genuine faces and unseen manipulations, whereas GA constrains exactly the representation of genuine faces. The contrast is largest with the PE encoder, where GPL loses 6.5 AA points and its fixed-threshold FaceForensics++ accuracy drops to 67.5%. The one measure on which GPL is better is text-to-image faces with PE (67.16 against 61.75). GPL also costs about three times as much training time, 43 against 15 minutes per stream, since every step needs two gradients through the full encoder.
+
+@subsection TRAINING SEEDS {sec:seeds}
+
+Table {tab:seeds} and {fig:seeds} repeat the main comparison on stream S1 with five training seeds. A seed changes the few-shot sample of every task and all training randomness; the initial GenD model is the same. The comparisons of the single-seed study hold in every seed. GA+LwF exceeds LwF by $0.99\pm0.22$ points, sequential fine-tuning by $2.58\pm0.65$, symmetric KD with LwF by $0.49\pm0.10$ and GPL by $2.47\pm0.60$, and GA exceeds symmetric KD by $0.70\pm0.13$. Each difference is positive in all five seeds, its per-seed bootstrap interval excludes zero in all five seeds, and all five registered tests hold after Holm correction (adjusted $p\le0.0008$).
+
+@table tab:seeds | Five training seeds on stream S1 (mean ± standard deviation) | widths=1.45,1.0,1.0,1.0,1.0,1.0 | align=lccccc | size=10
+Method | $U$ | T2I | AA | Gain | $\mathrm{ACC}_{\mathrm{FF}}$
+No update | 87.97 | 78.02 | 93.27 | – | 94.1
+Seq. FT | 85.20 ± 0.70 | 63.19 ± 1.62 | 94.84 ± 0.26 | 2.81 ± 1.46 | 83.1 ± 1.3
+LwF | 86.80 ± 0.15 | 69.10 ± 0.42 | 94.79 ± 0.11 | 1.54 ± 0.44 | 90.1 ± 0.5
+Symmetric KD | 86.47 ± 0.32 | 67.15 ± 0.99 | 94.85 ± 0.08 | 1.85 ± 0.86 | 88.7 ± 1.0
+Sym. KD + LwF | 87.30 ± 0.26 | 71.76 ± 0.99 | 94.57 ± 0.12 | 1.19 ± 0.38 | 92.0 ± 0.6
+GPL | 85.32 ± 0.57 | 71.20 ± 2.01 | 94.25 ± 0.48 | 3.69 ± 0.90 | 82.3 ± 2.9
+GA | 87.17 ± 0.21 | 68.96 ± 0.77 | **95.29** ± 0.14 | 1.95 ± 0.88 | 90.4 ± 1.2
+GA+LwF | **87.78** ± 0.17 | **73.36** ± 0.90 | 94.84 ± 0.15 | 1.31 ± 0.41 | **93.2** ± 0.7
+@endtable
+
+@note Test splits with 8 frames per video. The never-updated detector does not depend on the seed.
+
+@fig figs/fig_seeds.png | 4.8 | fig:seeds | Unseen-panel score of the final S1 models for five training seeds
+
+GA+LwF is also among the most stable methods, with a standard deviation of 0.17 points in $U$ (LwF 0.15) against 0.70 for sequential fine-tuning and 0.57 for GPL. Seed 0, used in the single-seed study, was favorable to sequential fine-tuning: its mean over seeds is 85.20, against 86.17 for seed 0, so the single-seed comparisons were conservative. The mean gain of GA+LwF is 47% of that of sequential fine-tuning (1.31 against 2.81), slightly below the guardrail of one half that held in the confirmation run; the gain of sequential fine-tuning itself varies strongly across seeds (standard deviation 1.46). Averaged over seeds, GA+LwF stays within 0.19 points of the never-updated detector in $U$, while GA alone attains the highest AA (95.29).
+
+@subsection MATCHED PLASTICITY {sec:matched}
+
+Equal weights do not impose equally strong constraints on different losses, so a stronger LwF or a gentler fine-tuning might reach the same trade-off as GA+LwF. Using Algorithm {alg:select}, the setting of each competitor whose development gain was closest to that of GA+LwF (1.03) was selected from grids registered in advance: LwF with $\lambda_l\in\{1,2,4,10\}$, sequential fine-tuning with learning rates $\{10^{-4},3\cdot10^{-5},10^{-5}\}$ and GA alone with $\lambda\in\{1,3,10\}$. The rule chose $\lambda_l=2$, a learning rate of $3\cdot10^{-5}$ and $\lambda=3$, and each chosen setting was trained with five seeds (Table {tab:matched}).
+
+@table tab:matched | Comparison at matched plasticity on stream S1 (five seeds) | widths=2.05,0.6,0.6,1.15,0.65,0.65,0.7 | align=lcccccc | size=10
+Setting | Dev. gain | Test gain | $U$ | T2I | AA | $\mathrm{ACC}_{\mathrm{FF}}$
+GA+LwF ($\lambda_g=\lambda_l=1$) | 1.03 | 1.31 | 87.78 ± 0.17 | 73.36 | 94.84 | 93.2
+LwF, $\lambda_l=1$ | 1.29 | 1.54 | 86.80 ± 0.15 | 69.10 | 94.79 | 90.1
+LwF, $\lambda_l=2$ (matched) | 0.94 | 1.07 | 87.27 ± 0.16 | 71.86 | 94.54 | 92.6
+Seq. FT, lr $10^{-4}$ | 1.58 | 2.81 | 85.20 ± 0.70 | 63.19 | 94.84 | 83.1
+Seq. FT, lr $3\cdot10^{-5}$ (matched) | 1.09 | 1.48 | 86.97 ± 0.38 | 70.84 | 94.25 | 89.2
+GA, $\lambda=1$ | 1.32 | 1.95 | 87.17 ± 0.21 | 68.96 | 95.29 | 90.4
+GA, $\lambda=3$ (matched) | 1.09 | 1.61 | 87.95 ± 0.18 | 73.48 | 95.15 | 93.2
+@endtable
+
+@note Matched settings were chosen on development data as those whose development gain is closest to that of GA+LwF; the other rows are the default settings for reference. Test splits with 8 frames per video.
+
+On the test data the matched settings learn about as much as GA+LwF (gains 1.07 to 1.61 against 1.31). GA+LwF still retains more than the stronger LwF, by $0.52\pm0.06$ points of $U$ (positive in all five seeds, Holm-adjusted $p=0.0001$), and the stronger LwF also learns less and reaches a lower AA. GA+LwF retains $0.81\pm0.32$ points more than the gentler fine-tuning (positive in all five seeds, $p=0.0023$), which learns slightly more. Reducing the learning rate closes most of the gap of plain fine-tuning in $U$, from 2.58 to 0.81 points, but not all of it, and it leaves the fixed-threshold accuracy of the base task at 89.2% against 93.2%.
+
+Alignment alone at $\lambda=3$ does better than the pre-set combination: it retains $0.17\pm0.09$ points more $U$ (higher in all five seeds, two-sided $p=0.017$, a descriptive comparison), learns more (gain 1.61) and reaches a higher AA (95.15). Its unseen score, 87.95, equals that of the never-updated detector. On S1 with the CLIP encoder, development-selected GA alone therefore matched or exceeded the default GA+LwF configuration. This configuration was not tested on the other task orders, the PE encoder or the nine-update stream, where all results refer to GA+LwF.
+
+@subsection NINE UPDATES {sec:long}
+
+Representation drift can accumulate over many updates, so stream S1 was extended to nine updates (Section {sec:streams}). Table {tab:long} reports the final models. The advantage of GA+LwF grows with the length of the stream. It exceeds LwF by 2.13 ($[+1.46,+2.85]$), GPL by 3.48 ($[+2.09,+4.97]$) and sequential fine-tuning by 5.32 ($[+3.98,+6.77]$), between 1.6 and 3.1 times the margins after three updates, and all three registered hypotheses hold. After nine updates sequential fine-tuning has lost 6.22 points of $U$, its text-to-image AUROC has fallen from 78.02 to 56.46, and its fixed-threshold FaceForensics++ accuracy is 68.8%. GA+LwF loses 0.90 points of $U$, keeps 87.5% accuracy on FaceForensics++, and also attains the highest AA of all methods (95.17), because it forgets the base task least. Symmetric KD with LwF (85.85) falls further behind GA+LwF than after three updates, which is consistent with the cost of constraining manipulated features accumulating over updates. GPL again learns the new data most (gain 2.25) and forgets the base task most among the regularized methods.
+
+@table tab:long | Nine-update stream after the last update (seed 0) | widths=1.35,0.55,0.55,0.55,0.62,0.55,0.55,0.55,0.5,0.62 | align=lccccccccc | size=9.5
+Method | $U$ | T2I | FF++ | DFDC-P | DFD | CDF | AA | Gain | $\mathrm{ACC}_{\mathrm{FF}}$
+No update | 87.97 | 78.02 | 98.06 | 85.71 | 97.38 | 91.92 | 93.27 | – | 94.1
+Seq. FT | 81.75 | 56.46 | 91.58 | 90.38 | 97.35 | 92.99 | 93.08 | 1.49 | 68.8
+LwF | 84.95 | 63.44 | 95.91 | 90.02 | 98.72 | 93.58 | 94.56 | 1.10 | 80.8
+Sym. KD + LwF | 85.85 | 66.61 | 97.35 | 89.13 | 98.75 | 94.29 | 94.88 | 0.83 | 85.7
+GPL | 83.59 | 66.67 | 91.82 | 91.97 | 96.11 | 91.25 | 92.79 | 2.25 | 71.8
+GA | 85.66 | 63.89 | 96.32 | 89.52 | 99.34 | 95.06 | 95.06 | 1.00 | 81.9
+GA+LwF | **87.07** | **70.64** | **97.59** | 89.06 | **99.44** | 94.59 | **95.17** | 0.82 | **87.5**
+@endtable
+
+@note Stream: FaceForensics++, four DFDC-Preview sessions, four DFD sessions, Celeb-DF. Test AUROC per dataset with 8 frames per video.
+
+{fig:long} follows $U$ after every update, with WildDeepfake scored on eight frames per sequence. GA+LwF has the highest $U$ after every one of the nine updates and declines slowly, from 87.85 after the first update to 86.91 after the last. Sequential fine-tuning fluctuates strongly from one update to the next, between 81.49 and 86.70, and GPL declines steadily to 83.58. The fourth DFDC-Preview session lowers $U$ for every method, which shows again that particular data, rather than the number of updates alone, drives the loss of generalization.
+
+@fig figs/fig_long.png | 4.9 | fig:long | Unseen-panel score after every update of the nine-update stream
+
+@subsection WEIGHT SENSITIVITY AND DATA REGIME {sec:sensitivity}
+
+The weights $\lambda_g=\lambda_l=1$ were fixed in advance. {fig:lambda} varies them on stream S1. For every value of $\lambda\in\{0.3,1,3,10\}$, GA attains both a higher $U$ and a higher AA than symmetric KD with the same weight, so the genuine-anchored frontier dominates the symmetric one. A stronger GA weight trades plasticity for retention: at $\lambda=3$ GA reaches $U=88.12$ with AA 94.93, and at $\lambda=10$ it reaches 88.29 with AA 94.50. The pre-set weight is therefore conservative rather than optimal. GA alone at $\lambda=3$ improves on GA+LwF at $\lambda_g=\lambda_l=1$ in $U$, AA and gain, and GA+LwF with $\lambda_g=3$ reaches 88.25. The reported configuration was not changed on the basis of these results, which were obtained on sealed data; Section {sec:matched} confirms the observation over five seeds with the weight selected on development data.
+
+@fig figs/fig_lambda.png | 4.9 | fig:lambda | Sensitivity to the distillation weight on stream S1
+
+{fig:shots} varies the number of videos per class and task. With five videos no method learns much (gains between 0.11 and 0.22 points), and all methods stay close to the never-updated detector, although the ordering is preserved, with GA+LwF at 88.09. With ten videos sequential fine-tuning learns aggressively (gain 1.67) and loses the most generalization ($U=85.64$). GA+LwF retains 87.76 while also reaching the highest AA (94.23), the largest advantage in the study: 2.12 points over sequential fine-tuning and 1.01 over LwF. At 25 videos the three methods reach the same AA, and GA+LwF still retains the most generalization.
+
+@fig figs/fig_shots.png | 4.9 | fig:shots | Unseen-panel score and mean test AUROC as a function of the number of videos per class
+
+@section ANALYSIS OF THE MECHANISM {sec:mechanism}
+
+@subsection WHERE ALONG THE STREAM GENERALIZATION IS LOST {sec:stagewise}
+
+Evaluating the intermediate models on the unseen panel ({fig:stagewise}) shows that the loss is not spread evenly over the stream. The first two updates leave the unseen score unchanged or slightly higher for every method except sequential fine-tuning after DFDC-Preview. Most of the loss occurs at the final Celeb-DF update, where sequential fine-tuning drops from 87.87 to 86.17 and GA+LwF from 88.38 to 87.88. This agrees with the order replication: when Celeb-DF is learned before DFD (order S2), all methods lose less. The datasets that most damage generalization are thus specific, and the protection offered by GA matters most at those updates.
+
+@fig figs/fig_stagewise.png | 4.9 | fig:stagewise | Unseen-panel score of intermediate models along stream S1
+
+@subsection REPRESENTATION DRIFT {sec:drift}
+
+For a fixed probe set of genuine faces, stream manipulations and unseen manipulations, the mean angular drift $1-\cos(z,z_{\mathrm{base}})$ of every final model with respect to the initial model was measured. Across 22 runs, genuine-feature drift predicts the change in $U$ closely ({fig:drift}, Spearman $\rho=-0.95$), but the drift of manipulated features predicts it equally well ($\rho$ between $-0.93$ and $-0.96$), and the partial correlation of genuine drift given manipulated-feature drift is only $-0.22$. Drift therefore shows that overall stability of the representation predicts retention; it does not by itself isolate a genuine-specific mechanism, which is what the matched controls of Section {sec:controls} address. GA does change the composition of the drift as intended: its ratio of genuine to stream-manipulation drift is 0.68, against 0.75 for symmetric, random-subset and fake-only KD (0.69 for GA+LwF against 0.79 for symmetric KD with LwF).
+
+@fig figs/fig_drift.png | 4.8 | fig:drift | Genuine-feature drift versus the change in unseen-panel score for 22 runs
+
+The constraint also transfers beyond the data it is applied to, as the analysis of Section {sec:theory} requires. GA, trained on genuine faces of the stream datasets only, reduces the drift of genuine faces from WildDeepfake (0.088 against 0.098 for symmetric and random-subset KD and 0.121 for fake-only KD) and from DeepFakeFace (0.060 against 0.064, 0.065 and 0.076), neither of which any model saw.
+
+On the grid of last-layer patch tokens ({fig:driftmaps}), sequential fine-tuning changes every patch, most strongly at the border and in the background, and GA+LwF reduces this drift by a factor of four, almost uniformly. A 10-nearest-neighbor classifier separates genuine faces from unseen manipulations with almost the same accuracy for every model (78.3% to 79.7%; {fig:tsne}), so the information needed to detect unseen manipulations survives every update in the local structure of the representation. What updates damage is the alignment of the representation with the linear decision function, consistent with Proposition 2.
+
+@fig figs/fig_driftmaps.png | 4.6 | fig:driftmaps | Mean drift of last-layer patch tokens with respect to the model before updates
+
+@fig figs/fig_tsne_col.png | 4.8 | fig:tsne | t-SNE of probe-set features before updates and after the S1 stream
+
+The t-SNE embeddings \cite{vandermaaten2008tsne} in {fig:tsne} show the probe features in two dimensions. The titles give the 5-fold accuracy of a 10-nearest-neighbor classifier that separates genuine faces from unseen manipulations in the original 1024-dimensional space. The overall arrangement of genuine faces, stream manipulations and unseen manipulations is similar for all four models.
+
+@subsection MISRANKED PAIRS AND EXAMPLES {sec:margins}
+
+Under its assumptions, Proposition 2 implies that an update can only misrank pairs whose margin before the update is small. In a post hoc check on the unseen panel, every genuine and manipulated pair that the never-updated model ranks correctly was taken, and the fraction that the final model misranks was measured as a function of the margin $s(u)-s(r)$ in logits before the update ({fig:margin}). Misranked pairs are confined to small margins for every method, and no pair with a margin above 8 is lost. GA+LwF loses the fewest pairs in every margin bin among the methods that learn: 3.2% overall, against 6.4% for LwF and 8.9% for sequential fine-tuning.
+
+@fig figs/fig_margin.png | 4.9 | fig:margin | Fraction of correctly ranked pairs misranked after the S1 updates, by margin before the updates
+
+{fig:examples} shows individual faces. Text-to-image faces that the original detector flagged with high confidence are lost entirely by sequential fine-tuning, for example from 0.97 to 0.05, but keep a substantially higher score under GA+LwF, between 0.24 and 0.70. The unseen forgeries that GA+LwF misses are ones that the original detector itself flagged with low confidence (0.58 to 0.81), again consistent with Proposition 2. Gradient saliency maps were also computed but were not informative.
+
+@fig figs/fig_examples_2x4.png | 5.0 | fig:examples | Unseen DeepFakeFace faces lost by sequential fine-tuning (top) and missed by GA+LwF (bottom)
+
+@note Numbers under each face: probability of manipulation before the updates, after sequential fine-tuning and after GA+LwF.
+
+@section ROBUSTNESS, CALIBRATION AND COST {sec:robustcal}
+
+@subsection IMAGE DEGRADATIONS {sec:robust}
+
+Deployed detectors receive compressed, resized and noisy images. The final models were re-scored on the unseen panel under 13 degradations of the face crops: JPEG compression at quality 75, 50 and 30, Gaussian blur with $\sigma$ of 1, 2 and 3 pixels, Gaussian noise with $\sigma$ of 5, 10 and 20 grey levels, down-scaling by 0.5, 0.35 and 0.25 followed by up-scaling, and down-scaling by 0.5 followed by JPEG compression at quality 50, which imitates the processing of social media platforms. WildDeepfake was scored with eight frames per sequence, which changes the clean $U$ by at most 0.08 points. Three hypotheses on the mean $U$ over the 13 conditions, $U_{\mathrm{deg}}$, were registered before scoring.
+
+@fig figs/fig_robust_2x2.png | 5.2 | fig:robust | Unseen-panel score of the final S1 models under four families of degradations
+
+Degradations lower $U$ by 5.6 to 6.5 points on average for every model ({fig:robust}; the full table is in Appendix 1). GA+LwF attains the highest $U_{\mathrm{deg}}$ of all nine models, 81.61, equal to that of the never-updated detector (81.55), and all three hypotheses hold: GA+LwF exceeds LwF by 1.27 points ($[+0.94,+1.66]$) and sequential fine-tuning by 0.98 ($[+0.33,+1.66]$), and GA exceeds symmetric KD by 0.73 ($[+0.50,+1.00]$). GA+LwF is the best updated model in 10 of the 13 conditions. Under strong blur and noise the differences shrink to a few tenths of a point, and sequential fine-tuning and EWC even exceed the never-updated detector at the strongest blur, presumably because the stream contains low-quality video. Down-scaling separates the methods most clearly: at a factor of 0.35, sequential fine-tuning loses 2.25 points relative to the never-updated detector and GA+LwF 0.28.
+
+@subsection CALIBRATION AND OPERATING POINTS {sec:calib}
+
+AUROC measures how well a model ranks manipulated above genuine videos. Deployment also depends on the decisions taken at a threshold and on whether the predicted confidence matches correctness. Rescoring the final models with all 32 frames per video changes AA by at most 0.3 points and preserves the ordering of Table {tab:maintrained}, and the never-updated model reproduces the scores of the original training run exactly (98.21 on FaceForensics++ and 92.04 on Celeb-DF). Table {tab:calib} reports calibration. On the unseen panel, GA+LwF is better calibrated than sequential fine-tuning (ECE 0.081 against 0.118). On the test splits of the trained datasets, however, its calibration is worse (0.072 against 0.040), and its false-positive rate on genuine videos at threshold 0.5 is 9.7% against 4.3%. This is consistent with its lower plasticity: the trained datasets are learned less completely, so their operating point moves less. Its accuracy at the fixed threshold is nevertheless the highest among the updated models (87.6% averaged over the four test splits, against 83.3% for sequential fine-tuning and 85.0% for LwF), because the base task keeps its operating point.
+
+@table tab:calib | 32-frame evaluation and calibration of the final models on stream S1 | widths=1.95,0.95,1.1,1.1,0.95 | align=lcccc | size=10
+Method | $\mathrm{AA}_{32}$ | ECE (test) | ECE (panel) | FPR (%)
+No update | 93.33 | 0.056 | 0.061 | 22.1
+Head-only FT | 93.35 | 0.063 | 0.056 | 16.9
+Seq. FT | 95.06 | 0.040 | 0.118 | 4.3
+EWC | 95.06 | 0.041 | 0.113 | 3.7
+Replay | 95.06 | 0.040 | 0.124 | 3.5
+LwF | 94.97 | 0.056 | 0.090 | 5.5
+Symmetric KD | 95.04 | 0.044 | 0.100 | 5.3
+Symmetric KD + LwF | 94.71 | 0.066 | 0.081 | 8.6
+GA | 95.44 | 0.050 | 0.113 | 6.3
+GA+LwF | 94.85 | 0.072 | 0.081 | 9.7
+@endtable
+
+@note $\mathrm{AA}_{32}$: mean test AUROC with 32 frames; ECE: expected calibration error (15 bins) on the test splits and on the unseen panel; FPR: mean false-positive rate on genuine test videos at threshold 0.5.
+
+A threshold of 0.5 is rarely used in deployment, where an operator fixes an acceptable false-positive rate instead. For each final model, the threshold at which 5% of the pooled genuine development videos of the four trained datasets are flagged was therefore set and applied to the test splits and to the unseen panel (Table {tab:oppoint}). On the test splits the realized false-positive rate stays close to its target (5.6% to 7.5%), and GA+LwF detects 81.9% of the manipulated videos, against 83.0% for sequential fine-tuning, 81.7% for LwF and 86.0% for GA alone. On the unseen panel the threshold does not transfer: every model flags between 22.5% and 29.5% of the genuine WildDeepfake videos, and the false-positive rates on DeepFakeFace genuine images also differ between models (3.3% to 7.4%). At these unequal false-positive rates the detection rates of unseen forgeries do not favor GA+LwF, whose threshold is the strictest on DeepFakeFace genuine images (3.3%) and which detects the fewest unseen forgeries (58.0% on average, against 59.9% for sequential fine-tuning).
+
+@table tab:oppoint | Low false-positive operating points of the final S1 models | widths=1.55,0.62,0.62,0.7,0.7,0.7,0.75,0.6 | align=lccccccc | size=10
+Method | Test TPR | Test FPR | Panel TPR | WDF FPR | DFF FPR | Per-set TPR | T2I
+No update | 78.2 | 6.4 | 61.3 | 27.3 | 4.3 | 57.6 | 37.6
+Seq. FT | 83.0 | 7.3 | 59.9 | 22.5 | 4.8 | 53.9 | 21.8
+LwF | 81.7 | 5.7 | 58.8 | 22.5 | 4.2 | 55.6 | 26.4
+Sym. KD + LwF | 82.1 | 7.3 | 60.1 | 26.3 | 4.0 | 57.1 | 30.2
+GPL | 82.3 | 5.6 | 61.9 | 29.5 | 7.4 | 47.9 | 23.6
+GA | 86.0 | 7.4 | 59.5 | 26.3 | 3.7 | 57.2 | 27.6
+GA+LwF | 81.9 | 6.6 | 58.0 | 22.7 | 3.3 | 57.7 | 31.2
+@endtable
+
+@note The first five columns use a development threshold that flags 5% of the pooled genuine development videos of all trained datasets (requires historical data; seed 0); panel TPR is averaged over the four unseen sets. The last two columns use a per-set threshold at 5% FPR on each unseen set (requires labelled target-domain data), averaged over sets and over five seeds, and for text-to-image faces (T2I).
+
+When the threshold is instead set on each unseen dataset itself at 5% false positives, which isolates the ranking in the low false-positive region, GA+LwF detects 57.7% of the unseen forgeries on average over five seeds, as many as the never-updated detector (57.6%), against 53.9% for sequential fine-tuning, 55.6% for LwF and 47.9% for GPL; this comparison was added after the registration. Neither diagnostic is a deployable procedure for choosing a threshold under the exemplar-free constraint: the first pools genuine development videos of all earlier tasks, which an exemplar-free update does not retain, and the second uses labelled data of the evaluation domain itself. The ranking advantage therefore extends to the low false-positive region of the ROC curve, but no update rule tested in this project keeps a threshold chosen on historical data valid on new domains.
+
+An obvious remedy is to recalibrate after each update with the only data available, those of the current task. A bias or a Platt scaling map \cite{platt1999probabilistic} fitted on 25 genuine and 25 manipulated Celeb-DF development videos reduces the test ECE of GA+LwF from 0.072 to 0.054 with Platt scaling, but the same map roughly doubles the ECE on the unseen panel for every model (for GA+LwF from 0.081 to 0.167), because the slope learned on the newest task, above 2 for every updated model, sharpens all scores (Appendix 1). Recalibration on the newest data alone therefore does not transfer, and calibration after an update needs either a calibration set that covers several sources or an update rule that preserves it.
+
+@subsection COMPUTATIONAL COST {sec:compute}
+
+GA and GA+LwF add one forward pass of the frozen previous model per batch. The three-update stream takes 14.9 minutes against 10.7 for sequential fine-tuning, the same as LwF and symmetric KD, and peak GPU memory rises from 5.42 to 5.50 GiB. Nothing is stored between updates and inference is unchanged. Replay, in contrast, must store raw face videos of real people, and GPL takes about three times as long as GA+LwF to train.
+
+@section DISCUSSION {sec:discussion}
+
+@subsection INTERPRETATION {sec:interpretation}
+
+The results support a consistent picture. For a parameter-efficient foundation detector, the representation of manipulated faces must change to accommodate a new forgery, but the representation of genuine faces need not. Unseen manipulations are implicitly compared against that genuine representation. Aligning only genuine faces, as DFWF proposed for spoofed speech, preserves it at a smaller cost in plasticity than aligning all faces. The matched controls show that the benefit is tied to the genuine class rather than to a weaker constraint, the weight sweep shows that it holds at every strength, and the comparison at matched plasticity shows that neither a stronger LwF nor a gentler fine-tuning reaches the same retention, while on S1 with the CLIP encoder alignment alone with a development-selected weight does slightly better than the combination. Logit distillation stabilizes the output distribution and was complementary at the pre-set weights. That an objective designed for audio transfers to visual face forgery detection, and outperforms a recent specialized visual method, suggests that the asymmetry between one shared genuine class and many manipulated classes is a property of forgery detection rather than of a particular modality.
+
+@subsection PRACTICAL GUIDANCE {sec:guidance}
+
+Three observations translate into recommendations for anyone who maintains a deployed detector. First, retention of generalization should be measured at every update, with data that the update never touches, because forgetting metrics on the trained datasets barely register the damage. Second, genuine-sample alignment is a useful baseline for exemplar-free updates of foundation detectors that tune normalization parameters, but it is not a guarantee of retention: text-to-image faces still lose performance and decision thresholds do not transfer. Its weight should be chosen on development data according to how much plasticity the application needs; on S1 with the CLIP encoder, alignment alone with a weight chosen this way matched or exceeded the combination with LwF in retention, learning and AA, so the LwF term may be unnecessary, although this was not verified in the other settings. Third, calibration should be monitored after every update. Fitting a recalibration map on the newest data alone improved calibration on the trained datasets but degraded it on unseen data, so a calibration set should cover more than the latest source.
+
+@subsection LIMITATIONS {sec:limitations}
+
+Several limitations qualify these conclusions. The update objective is prior work \cite{ma2021dfwf}; this project adds evidence about it in a new modality and regime. Retention is uneven across forgery families: the aggregate score hides a loss on text-to-image faces that no method avoided. Five seeds were run only for the main comparison on S1, all from the same GenD model, so the variability of the base training is not covered, and the development-selected GA-only configuration was tested only on S1. GPL was compared through our re-implementation, with unreported settings fixed in advance. The sealed panel was re-used across extension stages, although no decision was based on it, and the method was refined on development data before confirmation. Manipulated FaceForensics++ and DFD videos were cropped with masks; with label-independent crops DFD AUROC is 4.5 to 6.6 points lower for every model, although the comparison between methods changes little. DeepFakeFace consists of single images, WildDeepfake and DFDC-Preview are re-aligned from distributed crops, the nine-update stream draws on three datasets, and all detectors are GenD variants. The robustness study uses synthetic degradations, and the margin analysis is post hoc. Finally, GA learns the new datasets less completely than sequential fine-tuning, and its calibration on them is worse.

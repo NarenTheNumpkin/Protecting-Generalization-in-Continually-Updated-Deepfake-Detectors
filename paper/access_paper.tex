@@ -53,7 +53,7 @@
 {Medarametla \headeretal: Protecting Generalization in Continually Updated Deepfake Detectors}
 {Medarametla \headeretal: Protecting Generalization in Continually Updated Deepfake Detectors}
 
-\corresp{Corresponding author: Naren Medarametla (e-mail: naren.medarametla2023@vitstudent.ac.in).}
+\corresp{Corresponding author: Kowsigan M (e-mail: kowsigan.m@vit.ac.in).}
 
 \begin{abstract}
 Deepfake detectors built on vision foundation models generalize across benchmarks, but new forgeries keep appearing and a deployed detector must be updated with a few examples of them. We study what such updates cost and how to limit the cost without storing past data. Sequential few-shot updates of a state-of-the-art detector that tunes only the layer-normalization parameters of a frozen vision-language encoder barely reduce performance on the learned datasets, but they lower detection of forgeries that are never trained and shift the decision threshold of the original task. We adapt genuine-sample alignment, introduced for continual fake-audio detection, which keeps the previous model's features of genuine faces while manipulated faces adapt, and combine it with logit distillation. On two sealed unseen datasets, this update keeps the area under the receiver operating characteristic curve on unseen forgeries within 0.19 points of the never-updated detector on average over five training seeds, 0.99 points above learning without forgetting and 2.58 points above plain fine-tuning, and it exceeds a re-implementation of a recent generalization-preserving method in every setting. The advantage holds when competitors are tuned to learn as much and grows over nine updates. Controls that align as many random or manipulated faces show that the genuine class is what matters, and a ranking-margin analysis offers a conditional explanation. Retention is incomplete and uneven: text-to-image faces still lose 4.7 points, new datasets are learned less completely than with plain fine-tuning, and thresholds selected on development data do not transfer to unseen data.
@@ -750,17 +750,19 @@ We studied how a generalizable foundation-model deepfake detector should be upda
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 
-\begin{IEEEbiographynophoto}{Naren Medarametla}
-is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
-\end{IEEEbiographynophoto}
+\raggedbottom
+\begin{IEEEbiography}[{\IfFileExists{figures/author_naren.jpg}{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/author_naren.jpg}}{}}]{Naren Medarametla}
+is a research student with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India, working under the guidance of Dr. Kowsigan M. Naren's current research focuses on the mechanistic interpretability of large language models and the applications of large language models in cybersecurity, with a broader interest in understanding how deep networks represent and retain what they learn. Naren's work on this paper studies how generalizable deepfake detectors built on vision foundation models can be updated with new forgeries without losing their ability to detect forgeries they have never seen.
+\end{IEEEbiography}
 
-\begin{IEEEbiographynophoto}{Ramineni Durga Sai Sumanth}
-is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
-\end{IEEEbiographynophoto}
+\begin{IEEEbiography}[{\IfFileExists{figures/author_sumanth.jpg}{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/author_sumanth.jpg}}{}}]{Ramineni Durga Sai Sumanth}
+is a research student with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India, working under the guidance of Dr. Kowsigan M. Sumanth's research interests include deepfake detection, computer vision and machine learning, in particular the robustness and generalization of forgery detectors to new manipulation methods and real-world data. Sumanth's work on this paper concerns the continual updating of deepfake detectors and the controlled evaluation of their generalization.
+\end{IEEEbiography}
 
-\begin{IEEEbiographynophoto}{Kowsigan M}
-is with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, India.
-\end{IEEEbiographynophoto}
+\begin{IEEEbiography}[{\IfFileExists{figures/author_kowsigan.jpg}{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{figures/author_kowsigan.jpg}}{}}]{Kowsigan M}
+received the B.Tech. and M.Tech. degrees in information technology and the Ph.D. degree in computer science and engineering from Anna University. He has more than 15 years of academic experience at reputed institutions, including SRM Institute of Science and Technology and Vellore Institute of Technology, and 6 years of research experience. He is currently an Associate Professor with the School of Computer Science and Engineering, Vellore Institute of Technology, Chennai, Tamil Nadu, India. He has guided two Ph.D. scholars at SRM Institute of Science and Technology, and two research scholars are currently pursuing Ph.D. degrees under his guidance at Vellore Institute of Technology, Chennai. He has served as a DC Member for research scholars under Anna University, Chennai, and as a Board of Studies Member in reputed engineering colleges in Tamil Nadu. He has completed consultancy projects worth Rs.~3~Lakhs. He is the author of the book \textit{Theory of Computation}, and has edited books with Springer, Taylor \& Francis, and Wiley. He has published papers in reputed journals and conferences and holds multiple patents. His research interests include big data, quantum computing, theoretical computer science, cloud computing, machine learning, and the Internet of Things. Dr. Kowsigan is an active member of the academic and research community in Tamil Nadu.
+\end{IEEEbiography}
+\vskip 0pt plus 1filll
 
 \EOD
 
