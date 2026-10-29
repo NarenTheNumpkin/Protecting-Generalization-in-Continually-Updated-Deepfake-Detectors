@@ -118,7 +118,7 @@ assets/        figures for this README
 ```bibtex
 @misc{medarametla2026protecting,
   title  = {Protecting Generalization in Continually Updated Deepfake Detectors},
-  author = {Medarametla, Naren and Sumanth, Ramineni Durga Sai and M, Kowsigan},
+  author = {Medarametla Naren, Sumanth Ramineni Durga Sai, M Kowsigan},
   year   = {2026},
   note   = {Manuscript},
   url    = {https://github.com/NarenTheNumpkin/Protecting-Generalization-in-Continually-Updated-Deepfake-Detectors}
