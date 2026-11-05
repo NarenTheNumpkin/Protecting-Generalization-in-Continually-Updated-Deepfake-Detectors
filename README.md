@@ -12,7 +12,7 @@ School of Computer Science and Engineering, Vellore Institute of Technology, Che
   <img src="assets/overview.png" width="100%" alt="Overview of the update procedure">
 </p>
 
-## Overview
+## Overview.
 
 Deepfake detectors built on foundation models generalize well to forgeries they were never trained on, but new
 forgeries keep appearing and a deployed detector has to be updated with a few examples of them. We show that
